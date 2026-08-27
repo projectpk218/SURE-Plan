@@ -1,0 +1,25 @@
+HOW TO GET YOUR PUBLIC WEB LINK
+
+1. Create a GitHub repository, for example: sure-plan
+2. Upload ALL files from this folder.
+3. Do not create/upload a real .streamlit/secrets.toml file.
+4. Go to https://share.streamlit.io
+5. Sign in / continue with GitHub.
+6. Click Create app.
+7. Select your GitHub repository.
+8. Main file path: app.py
+9. In Advanced settings -> Secrets, enter:
+
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "YOUR_ADMIN_PASSWORD"
+USER_USERNAME = "planner"
+USER_PASSWORD = "YOUR_USER_PASSWORD"
+
+10. Choose an App URL/subdomain if available, for example sure-plan-pradeep.
+11. Click Deploy.
+
+Streamlit will publish a URL ending in .streamlit.app.
+Example form only:
+https://sure-plan-pradeep.streamlit.app
+
+Do not treat that example as an already-created link.
