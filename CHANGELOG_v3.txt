@@ -1,0 +1,25 @@
+SURE-PLAN v3.0 — FINAL CONSOLIDATED UPDATE
+
+- Standard workforce default changed from 47 to 150 (Admin editable).
+- Standard production capacity remains independently editable; it does not auto-scale from workforce.
+- Added process-wise Admin Machine Master (default 105 estimated prototype machines).
+- Added daily process-wise Available Today, breakdown/unavailable count, availability %, issue note and bottleneck detection.
+- Replaced simple Material Delay input with Material Readiness statuses and Expected Material Ready Date.
+- Blocked material orders are excluded from eligible production allocation until release.
+- Added Original Quantity, Completed Before Today, Actual Production Today, Remaining Quantity logic and optional Actual Workers Today.
+- Added rolling REPLAN TODAY history and Daily Change Monitor.
+- Renamed Tardiness to Projected Delay in the user interface.
+- Improved ML risk explanation with Key Drivers and Prototype Model Confidence wording.
+- Renamed Recommended Workers to Recommended Workers Today.
+- Added process-wise worker-allocation view based on the order's current production process.
+- Renamed Daily Resource Allocation to Daily Workforce Allocation by Order with production dates and Actual vs Planned display when actual worker history exists.
+- Added Machine Availability & Bottleneck View and Material Readiness & Constraint Tracker.
+- Rebuilt Management Recommendation as Management Decision Centre with ACT NOW / ACTION TODAY / MONITOR / NO ACTION priorities.
+- Added expected impact and consequence-if-no-action explanations.
+- Rebuilt Quick View — What-if Scenarios as What-if Impact Analysis.
+- Added STABLE / WATCH / WARNING / HIGH IMPACT / CRITICAL scenario badges and comparison badges.
+- Added explicit scenario assumptions, affected orders, reasons and suggested responses.
+- Added Test Recovery Action simulation.
+- Preserved navy sidebar + blue/violet/magenta professional management-dashboard theme.
+- Preserved academic disclosure for simulated ML data and unverified benchmark assumptions.
+- Final QA fix: exact daily attendance ratios now preserve the intended integer worker count (e.g. 110 present out of 150 remains 110, avoiding floating-point floor loss).

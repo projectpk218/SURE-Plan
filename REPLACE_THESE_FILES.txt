@@ -1,0 +1,22 @@
+SURE-PLAN v3.0 UPDATE — WHAT TO REPLACE IN GITHUB
+
+For your existing SURE-Plan GitHub repository:
+
+1. Replace app.py with the app.py in this package.
+2. Replace planner_core.py with the planner_core.py in this package.
+3. Keep prototype_training_data.csv in the same repository root.
+4. Keep/update requirements.txt from this package.
+5. Do NOT upload a real .streamlit/secrets.toml file containing passwords.
+6. Commit the changes to main and Push origin.
+7. Open your Streamlit app and wait for automatic redeployment.
+
+IMPORTANT:
+Do not replace only app.py this time. The v3.0 application also changes planning logic inside planner_core.py.
+
+Default Admin login fallback (only if Streamlit Secrets are not configured):
+admin / admin2026
+
+Default Planner login fallback:
+planner / user2026
+
+For a public app, use Streamlit Secrets and change the passwords.

@@ -1,0 +1,47 @@
+SURE-PLAN v3.0 — FINAL AGREED CHANGE SPECIFICATION
+
+1. Preserve the professional management-dashboard theme and interface.
+2. Separate Admin configuration from Planner daily production inputs.
+3. Default standard workforce to 150, editable by Admin.
+4. Keep standard production capacity independently Admin-editable; do not infer capacity solely from workforce.
+5. Add Admin process-wise Machine Master with editable counts and automatic total.
+6. Use a process-wise shoe-upper production flow from cutting through relevant upper preparation/support stages.
+7. Add Planner Daily Machine Availability: total, available today, breakdown/unavailable, availability %, issue note, status.
+8. Identify machine breakdown process, current bottleneck, affected orders and management response.
+9. Replace simple Material Delay with Material Readiness status + Expected Material Ready Date.
+10. Block material-unavailable/quality-held/short/rejected orders from eligible allocation until material release.
+11. Make SURE-Plan a rolling daily replanning tool with REPLAN TODAY.
+12. Use Remaining Quantity after actual production is recorded.
+13. Add Daily Change Monitor for workers, machines, constraints, high-risk orders, late orders and projected delay.
+14. Rename user-facing Tardiness to Projected Delay (Days).
+15. LOW/MEDIUM/HIGH specifically means Delivery Risk.
+16. Show key risk drivers explaining why the ML risk is LOW/MEDIUM/HIGH.
+17. Show Remaining Quantity, Required Daily Output, Capacity Ratio, ML Delivery Risk, Prototype Model Confidence and Key Drivers.
+18. Use process-wise machine constraints in effective-capacity/risk calculations.
+19. Explain that Prototype Model Confidence is simulated-data class probability, not real-world certainty.
+20. Rename Recommended Workers to Recommended Workers Today.
+21. Add process-wise worker allocation based on the order's selected current process; avoid pretending the same workers are simultaneously allocated to every stage.
+22. Dynamically reallocate eligible workforce when orders finish, are blocked, become urgent, or conditions change.
+23. Rename Daily Resource Allocation to Daily Workforce Allocation by Order.
+24. Use Production Date on X-axis and Workers Allocated on Y-axis.
+25. Distinguish historical Actual worker use from future Planned/Revised worker allocation when actual values are available.
+26. Add a separate Machine Availability/Bottleneck view rather than mixing all resources in one chart.
+27. Redesign Management Recommendations as Management Decision Centre.
+28. Show Priority, Issue, Affected Order/Process, Recommended Action and When.
+29. Use ACT NOW / ACTION TODAY / MONITOR / NO ACTION management-priority badges.
+30. Show Expected Impact and consequence if no action is taken.
+31. Provide Test This Action / recovery simulation where feasible.
+32. Compare before vs after calculated outcomes for tested actions.
+33. Keep ML prediction, planning/allocation, recommendations, what-if simulation and management decision conceptually separate.
+34. Rename Quick View — What-if Scenarios to What-if Impact Analysis.
+35. State clearly that what-if scenarios are hypothetical and do not change the active plan.
+36. Replace Normal with Current Operating Plan.
+37. Use clearer disruption scenario names for labour, machine, material and combined constraints.
+38. Show the exact assumption being tested in every scenario.
+39. Show affected process/orders, on-time orders, high-risk orders, projected delay, reason and suggested response.
+40. Use STABLE / WATCH / WARNING / HIGH IMPACT / CRITICAL scenario-impact badges.
+41. Compare each scenario with Current Operating Plan using BETTER / NO MAJOR CHANGE / WORSE / MUCH WORSE.
+42. Present Current Plan vs What-if outcomes clearly.
+43. Add Test Recovery Action simulation.
+44. Keep Delivery Risk, Scenario Impact and Management Priority as three separate badge systems.
+45. Preserve academic disclosure that simulated ML data and unverified benchmark values are prototype assumptions.
