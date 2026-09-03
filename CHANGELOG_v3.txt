@@ -1,4 +1,4 @@
-SURE-PLAN v3.0 — FINAL CONSOLIDATED UPDATE
+RAPID v3.0 — FINAL CONSOLIDATED UPDATE
 
 - Standard workforce default changed from 47 to 150 (Admin editable).
 - Standard production capacity remains independently editable; it does not auto-scale from workforce.

@@ -1,6 +1,6 @@
-# SURE-Plan v3.0 — Final Consolidated Management Dashboard
+# RAPID v3.0 — Final Consolidated Management Dashboard
 
-SURE-Plan is a rolling daily production planning and decision-support prototype for concurrent make-to-order shoe-upper production.
+RAPID is a rolling daily production planning and decision-support prototype for concurrent make-to-order shoe-upper production.
 
 ## Main v3.0 capabilities
 

@@ -1,4 +1,4 @@
-SURE-PLAN v3.0 — FINAL AGREED CHANGE SPECIFICATION
+RAPID v3.0 — FINAL AGREED CHANGE SPECIFICATION
 
 1. Preserve the professional management-dashboard theme and interface.
 2. Separate Admin configuration from Planner daily production inputs.
@@ -10,7 +10,7 @@ SURE-PLAN v3.0 — FINAL AGREED CHANGE SPECIFICATION
 8. Identify machine breakdown process, current bottleneck, affected orders and management response.
 9. Replace simple Material Delay with Material Readiness status + Expected Material Ready Date.
 10. Block material-unavailable/quality-held/short/rejected orders from eligible allocation until material release.
-11. Make SURE-Plan a rolling daily replanning tool with REPLAN TODAY.
+11. Make RAPID a rolling daily replanning tool with REPLAN TODAY.
 12. Use Remaining Quantity after actual production is recorded.
 13. Add Daily Change Monitor for workers, machines, constraints, high-risk orders, late orders and projected delay.
 14. Rename user-facing Tardiness to Projected Delay (Days).

@@ -1,6 +1,6 @@
-SURE-PLAN v3.0 UPDATE — WHAT TO REPLACE IN GITHUB
+RAPID v3.0 UPDATE — WHAT TO REPLACE IN GITHUB
 
-For your existing SURE-Plan GitHub repository:
+For your existing RAPID GitHub repository:
 
 1. Replace app.py with the app.py in this package.
 2. Replace planner_core.py with the planner_core.py in this package.
