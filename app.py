@@ -78,157 +78,84 @@ st.markdown(
     """
     <style>
     :root {
-        --navy:#071b4b;
-        --navy2:#0a2b68;
-        --ink:#102a61;
-        --text:#20345e;
-        --muted:#71809c;
-        --line:#e6eaf4;
-        --panel:#ffffff;
-        --soft:#f7f9fd;
-        --blue:#1269ef;
-        --cyan:#00a8df;
-        --violet:#7147f4;
-        --magenta:#ec2aa5;
-        --green:#129b68;
-        --orange:#e98a10;
-        --red:#ef476f;
-        --teal:#079aa5;
+        --ocean:#087E8B; --deep:#103C4A; --ink:#183B49; --text:#294C58;
+        --muted:#61747A; --sand:#F4EFE6; --line:#DFD9CC; --panel:#FFFEFB;
+        --green:#20745B; --orange:#946013; --red:#AD3E40;
     }
-
-    /* Force a clean light management workspace even when the browser uses dark mode. */
-    html, body, [class*="css"] {font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
-    .stApp {
-        color:var(--text);
-        background:
-          radial-gradient(circle at 11% 1%, rgba(236,42,165,.075), transparent 23%),
-          radial-gradient(circle at 81% 0%, rgba(18,105,239,.065), transparent 24%),
-          linear-gradient(180deg,#fbfbfe 0%,#f6f8fd 54%,#fbfcff 100%);
-    }
-    [data-testid="stHeader"] {background:rgba(251,252,255,.82);backdrop-filter:blur(12px);}
-    [data-testid="stToolbar"] {right:1rem;}
-    .block-container {padding-top:.55rem;padding-bottom:1.5rem;max-width:1780px;padding-left:1.45rem;padding-right:1.45rem;}
-    h1,h2,h3 {letter-spacing:-.025em;color:var(--ink);}
-
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background:
-          radial-gradient(circle at 25% 78%, rgba(113,71,244,.35), transparent 29%),
-          radial-gradient(circle at 85% 96%, rgba(236,42,165,.25), transparent 24%),
-          linear-gradient(180deg,#06163d 0%,#08265d 54%,#071844 100%);
-        border-right:1px solid rgba(255,255,255,.08);
-    }
-    [data-testid="stSidebar"] > div {padding-top:.75rem;}
-    [data-testid="stSidebar"] * {color:#f7f9ff;}
-    [data-testid="stSidebar"] .stRadio label {
-        padding:.62rem .76rem;border-radius:10px;transition:.18s ease;font-weight:680;
-    }
-    [data-testid="stSidebar"] .stRadio label:hover {background:rgba(255,255,255,.08);}
-    [data-testid="stSidebar"] .stRadio label:has(input:checked) {
-        background:linear-gradient(100deg,#6847ef 0%,#b939e0 56%,#ec2aa5 100%);
-        box-shadow:0 8px 24px rgba(127,58,223,.26);
-    }
-    [data-testid="stSidebar"] hr {border-color:rgba(255,255,255,.11);}
-    .rapid-brand {display:flex;align-items:center;gap:13px;margin:4px 0 18px;}
-    .rapid-logo {
-        width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;
-        background:linear-gradient(145deg,#10a8e8 0%,#4665f5 38%,#7a45f2 67%,#ec2aa5 100%);
-        box-shadow:0 10px 28px rgba(72,70,239,.34);font-size:23px;font-weight:900;color:white;
-        position:relative;
-    }
-    .rapid-logo:after {content:"";position:absolute;inset:8px;border:2px solid rgba(255,255,255,.55);transform:rotate(30deg);border-radius:4px;}
-    .rapid-brand-title {font-size:27px;font-weight:860;line-height:1;color:white;letter-spacing:-.035em;}
-    .rapid-brand-sub {font-size:9.5px;opacity:.76;margin-top:5px;line-height:1.35;max-width:150px;}
-    .sidebar-status {border:1px solid rgba(255,255,255,.13);border-radius:13px;padding:14px 14px;margin-top:12px;background:rgba(0,0,0,.08);}
-    .sidebar-status-title {font-size:9px;font-weight:850;letter-spacing:.06em;opacity:.85;margin-bottom:8px;}
-    .status-green {font-size:11px;color:#50e29a !important;font-weight:760;}
-    .status-dot {display:inline-block;width:8px;height:8px;border-radius:50%;background:#33d783;margin-right:7px;box-shadow:0 0 0 3px rgba(51,215,131,.10);}
-    .signed-label {font-size:9px;letter-spacing:.06em;opacity:.62;font-weight:800;margin-top:4px;}
-    .signed-user {font-size:12px;font-weight:780;margin-top:5px;}
-
-    /* Header */
-    .dashboard-header {display:flex;align-items:center;justify-content:space-between;gap:18px;margin:1px 0 10px;}
-    .dashboard-title-wrap {display:flex;align-items:center;gap:13px;}
-    .menu-orb {width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:white;display:flex;align-items:center;justify-content:center;box-shadow:0 7px 20px rgba(30,48,92,.08);font-size:18px;color:var(--ink);}
-    .dashboard-h1 {font-size:28px;font-weight:860;color:#0d2b68;letter-spacing:-.035em;line-height:1.05;}
-    .dashboard-sub {font-size:12px;color:#596c94;margin-top:4px;}
-    .header-right {display:flex;gap:10px;align-items:center;}
-    .header-chip {min-width:155px;background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:12px;padding:9px 13px;box-shadow:0 7px 20px rgba(28,46,88,.055);}
-    .header-chip-k {font-size:9.5px;color:#6e7d98;font-weight:740;}
-    .header-chip-v {font-size:12px;color:#18346d;font-weight:820;margin-top:2px;}
-    .avatar-chip {display:flex;gap:9px;align-items:center;}
-    .avatar-circle {width:31px;height:31px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,#0aa4e2,#1769ef 45%,#7147f4);color:white;font-weight:850;}
-
-    /* Dashboard controls */
-    div[data-testid="stVerticalBlockBorderWrapper"] {
-        background:rgba(255,255,255,.96);border:1px solid var(--line) !important;border-radius:14px !important;
-        box-shadow:0 8px 24px rgba(28,46,88,.055);
-    }
-    .control-label {font-size:9.5px;color:#5e6f91;font-weight:780;margin-bottom:3px;}
-    .control-value {font-size:20px;color:#11316b;font-weight:850;line-height:1.15;}
-    .control-sub {font-size:9.5px;color:#71809c;margin-top:3px;}
-    [data-testid="stDateInput"] label,[data-testid="stNumberInput"] label {font-size:10px !important;color:#53688d !important;font-weight:730 !important;}
-    div[data-baseweb="input"] > div,div[data-baseweb="select"] > div,
-    [data-testid="stNumberInput"] input,[data-testid="stDateInput"] input {
-        background:#ffffff !important;color:#173260 !important;border-color:#dfe5f0 !important;border-radius:9px !important;
-    }
-    [data-testid="stNumberInput"] button {background:#f7f9fd !important;color:#173260 !important;border-color:#e1e6f0 !important;}
-    .stButton > button,.stDownloadButton > button {border-radius:9px;font-weight:780;min-height:2.45rem;}
-    .stButton > button[kind="primary"] {
-        background:linear-gradient(95deg,#06a7dc 0%,#1769ef 34%,#7447f3 67%,#ed2aa7 100%);
-        border:0;color:white;box-shadow:0 7px 18px rgba(92,65,226,.22);
-    }
-    .stButton > button[kind="primary"]:hover {filter:brightness(1.035);transform:translateY(-1px);}
-
-    /* Sections and cards */
-    .section-title {font-size:15.5px;font-weight:840;color:#12316b;margin:3px 0 8px;display:flex;align-items:center;gap:7px;}
-    .section-sub {font-size:10.5px;color:#75829b;margin:-3px 0 8px;line-height:1.45;}
-    .section-icon {font-size:16px;}
-    .kpi-card {border-radius:13px;padding:13px 13px 11px;min-height:116px;border:1px solid var(--line);background:#fff;box-shadow:0 7px 20px rgba(28,46,88,.045);position:relative;overflow:hidden;}
-    .kpi-card:after {content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--accent);opacity:.28;}
-    .kpi-blue {--accent:#1570ef;background:linear-gradient(145deg,#f6fbff,#fff);border-color:#dceafd;}
-    .kpi-violet {--accent:#7447f3;background:linear-gradient(145deg,#faf7ff,#fff);border-color:#e8ddff;}
-    .kpi-green {--accent:#12a06b;background:linear-gradient(145deg,#f3fff9,#fff);border-color:#d3f0e2;}
-    .kpi-orange {--accent:#ed8a0b;background:linear-gradient(145deg,#fff9f1,#fff);border-color:#f7e5c8;}
-    .kpi-red {--accent:#ef476f;background:linear-gradient(145deg,#fff6f8,#fff);border-color:#f8dce4;}
-    .kpi-teal {--accent:#069ca4;background:linear-gradient(145deg,#f3feff,#fff);border-color:#d2eef0;}
+    .stApp {background:var(--sand);color:var(--text);}
+    html,body {font-family:'Segoe UI',sans-serif;}
+    [data-testid="stHeader"] {background:rgba(244,239,230,.96);}
+    .block-container {max-width:1240px;padding:2.2rem 2rem 3rem;}
+    h1,h2,h3 {color:var(--ink);letter-spacing:-.025em;}
+    [data-testid="stSidebar"] {background:var(--deep);border-right:1px solid #234F5C;}
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"],
+    [data-testid="stSidebar"] label,[data-testid="stSidebar"] .stCaption {color:#F4EFE6;}
+    [data-testid="stSidebar"] .stRadio label {padding:.7rem .8rem;border-radius:8px;}
+    [data-testid="stSidebar"] .stRadio label:hover {background:#1B4B59;}
+    [data-testid="stSidebar"] .stRadio label:has(input:checked) {background:#1E5967;box-shadow:inset 3px 0 #D8BB8B;}
+    [data-testid="stSidebar"] hr {border-color:#35606B;}
+    [data-testid="stSidebar"] .stButton button {background:#F4EFE6;color:var(--deep);border-color:#D8BB8B;}
+    [data-testid="stSidebar"] .stButton [data-testid="stMarkdownContainer"] {color:var(--deep);}
+    .rapid-brand {display:flex;align-items:center;gap:12px;margin:10px 0 28px;}
+    .rapid-logo {width:44px;height:48px;flex-shrink:0;border-radius:10px;background:#D8BB8B;color:#103C4A;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;}
+    .rapid-brand-title {font-size:28px;font-weight:800;color:#FFFEFB;letter-spacing:.04em;}
+    .rapid-brand-sub {font-size:10px;line-height:1.55;color:#C6D6D8;max-width:160px;margin-top:4px;}
+    .sidebar-status {padding:16px;border:1px solid #35606B;border-radius:10px;margin-top:20px;background:#164451;}
+    .sidebar-status-title,.signed-label {font-size:11px;letter-spacing:.08em;color:#C6D6D8;margin-bottom:8px;}
+    .status-green {color:#B9DBCD;font-size:13px;}
+    .status-dot {display:inline-block;width:7px;height:7px;background:#86CBB2;border-radius:50%;margin-right:8px;}
+    .signed-user {font-size:14px;color:#FFFEFB;}
+    .dashboard-header {display:flex;align-items:center;justify-content:space-between;gap:20px;margin:4px 0 22px;padding-bottom:22px;border-bottom:1px solid var(--line);}
+    .dashboard-title-wrap {display:flex;gap:12px;align-items:center;}
+    .menu-orb {display:none;}
+    .dashboard-h1 {font-size:30px;font-weight:750;line-height:1.2;color:var(--deep);letter-spacing:-.03em;}
+    .dashboard-sub {font-size:14px;line-height:1.5;color:var(--muted);margin-top:7px;max-width:600px;}
+    .header-right {display:flex;gap:10px;flex-shrink:0;}
+    .header-chip {border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:10px 13px;}
+    .header-chip-k {font-size:11px;color:var(--muted);}
+    .header-chip-v {font-size:13px;font-weight:650;color:var(--deep);margin-top:4px;}
+    .avatar-chip {display:flex;align-items:center;gap:9px;}
+    .avatar-circle {width:30px;height:30px;border-radius:50%;background:#E0EFF0;color:var(--ocean);display:flex;align-items:center;justify-content:center;font-weight:750;}
+    [data-testid="stVerticalBlockBorderWrapper"], [data-testid="stLayoutWrapper"] > [data-testid="stVerticalBlockBorderWrapper"] {border-radius:12px !important;}
+    [data-testid="stVerticalBlockBorderWrapper"] {background:var(--panel);border-color:var(--line) !important;}
+    [data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] .section-title),
+    [data-testid="stVerticalBlock"][style*="border: 1px"] {background:var(--panel);border-color:var(--line) !important;border-radius:12px !important;}
+    .stButton > button,.stDownloadButton > button {border-radius:8px;min-height:2.7rem;font-weight:650;}
+    .stButton > button[kind="primary"] {background:var(--ocean);color:white;border:1px solid var(--ocean);}
+    .stButton > button[kind="primary"]:hover {background:#096774;border-color:#096774;}
+    .section-title {font-size:20px;line-height:1.35;font-weight:700;color:var(--deep);margin:7px 0 10px;display:flex;align-items:center;gap:10px;}
+    .section-icon {font-size:18px;color:var(--ocean);}
+    .section-sub {font-size:14px;color:var(--muted);line-height:1.6;margin:0 0 16px;}
+    .kpi-card {margin-bottom:12px;--accent:var(--ocean);padding:20px;border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:10px;background:var(--panel);min-height:156px;height:100%;}
+    .kpi-blue,.kpi-violet,.kpi-teal {--accent:var(--ocean);}
+    .kpi-green {--accent:var(--green);}.kpi-orange {--accent:var(--orange);}.kpi-red {--accent:var(--red);}
     .kpi-top {display:flex;align-items:center;gap:8px;}
-    .kpi-icon {width:35px;height:35px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--accent) 10%, white);color:var(--accent);font-size:18px;font-weight:850;}
-    .kpi-label {font-size:9.7px;color:#5c6e8f;font-weight:780;line-height:1.25;}
-    .kpi-value {font-size:23px;color:#11316b;font-weight:870;line-height:1.05;margin-top:8px;}
-    .kpi-sub {font-size:9.5px;color:#71809c;margin-top:5px;line-height:1.35;}
-    .risk-low-text {color:#118b5c !important}.risk-medium-text{color:#c87900 !important}.risk-high-text{color:#dc315d !important}
-    .pill-row {display:flex;gap:7px;flex-wrap:wrap;margin:7px 0 4px;}
-    .pill {padding:4px 8px;border-radius:999px;background:#f1f4fa;color:#50617f;font-size:9.8px;font-weight:720;border:1px solid #e2e7f0;}
-
-    /* Tables */
-    div[data-testid="stDataFrame"] {border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:none;background:white !important;}
-    [data-testid="stDataFrame"] * {font-size:11px;}
-    [data-testid="stDataFrame"] canvas {filter:none !important;}
-    [data-testid="stDataEditor"] {background:#fff !important;}
-    details[data-testid="stExpander"] {background:rgba(255,255,255,.88);border:1px solid var(--line);border-radius:11px;}
-    details[data-testid="stExpander"] summary {font-weight:760;color:#173467;}
-
-    /* Scenario and action cards */
-    .scenario-card {border-radius:11px;padding:10px 11px;min-height:107px;border:1px solid var(--line);background:#fff;box-shadow:0 6px 16px rgba(28,46,88,.035);}
-    .scenario-name {font-size:10.5px;font-weight:820;color:#183665;line-height:1.25;min-height:27px;}
-    .scenario-impact {font-size:9.5px;font-weight:850;margin-top:4px;}
-    .scenario-big {font-size:20px;font-weight:870;color:#15346d;margin-top:6px;}
-    .scenario-small {font-size:9px;color:#75829a;line-height:1.35;margin-top:2px;}
-    .action-banner {border-radius:10px;padding:9px 12px;font-size:11px;font-weight:770;margin-bottom:8px;}
-    .action-red {background:#fff2f6;border:1px solid #ffd7e2;color:#9d2947;}
-    .action-amber {background:#fff9ed;border:1px solid #ffe0a6;color:#936000;}
-    .action-green {background:#effcf7;border:1px solid #caeedf;color:#0d7550;}
-    .change-card {background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 10px;min-height:75px;}
-    .change-label {font-size:9px;color:#71809c;font-weight:760;line-height:1.25;}
-    .change-values {font-size:15px;color:#15346d;font-weight:850;margin-top:5px;}
-    .change-delta {font-size:9px;color:#6d7c96;margin-top:2px;}
-
-    .academic-note {font-size:9.5px;color:#7c879b;padding:10px 0 2px;border-top:1px solid var(--line);margin-top:12px;line-height:1.45;}
-    .top-note {font-size:9.3px;color:#72809a;margin-top:3px;}
-
-    @media (max-width:1050px){
-        .dashboard-h1{font-size:24px}.header-right{display:none}.block-container{padding-left:.8rem;padding-right:.8rem}.kpi-value{font-size:21px}
+    .kpi-icon {color:var(--accent);font-size:18px;}
+    .kpi-label {font-size:11px;letter-spacing:.06em;font-weight:700;color:var(--muted);}
+    .kpi-value {font-size:30px;font-weight:750;color:var(--deep);margin:12px 0 7px;line-height:1.1;}
+    .kpi-sub {font-size:12px;color:var(--muted);line-height:1.5;}
+    .risk-low-text {color:var(--green);}.risk-medium-text {color:var(--orange);}.risk-high-text {color:var(--red);}
+    .pill-row {display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 16px;}
+    .pill {border-radius:6px;background:#EAE3D6;padding:7px 10px;color:#465C61;font-size:12px;}
+    [data-testid="stDataFrame"] {border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+    details[data-testid="stExpander"] {background:var(--panel);border-color:var(--line);border-radius:10px;}
+    details[data-testid="stExpander"] summary {color:var(--deep);font-weight:600;}
+    .scenario-card {display:grid;grid-template-columns:2fr 1fr 1fr 2fr;gap:16px;align-items:center;background:var(--panel);border-bottom:1px solid var(--line);padding:18px 4px;}
+    .scenario-name {font-size:14px;font-weight:700;color:var(--deep);}
+    .scenario-impact {font-size:12px;font-weight:700;}
+    .scenario-big {font-size:23px;color:var(--deep);font-weight:750;}
+    .scenario-small {font-size:12px;color:var(--muted);line-height:1.6;}
+    .action-banner {border-radius:8px;padding:13px 16px;font-size:14px;font-weight:600;margin-bottom:16px;}
+    .action-red {background:#FAEEEB;color:#913738;border:1px solid #ECD4CF;}
+    .action-amber {background:#F8F0DE;color:#855910;border:1px solid #E8D9B9;}
+    .action-green {background:#ECF4EE;color:#25634F;border:1px solid #D2E3D7;}
+    .academic-note {font-size:12px;line-height:1.7;color:var(--muted);border-top:1px solid var(--line);padding-top:20px;margin-top:24px;}
+    .top-note {font-size:12px;color:var(--muted);margin-top:6px;}
+    @media(max-width:1100px) {.header-right {display:none;}.dashboard-h1 {font-size:27px;}}
+    @media(max-width:640px) {
+        .block-container {padding:4.5rem 1rem 2rem;}.dashboard-h1 {font-size:24px;}
+        .scenario-card {grid-template-columns:1fr 1fr;gap:10px;}.scenario-small {grid-column:1 / -1;}
+        .kpi-card {min-height:132px;}.section-title {font-size:18px;}
     }
     </style>
     """,
@@ -270,10 +197,10 @@ def login_page():
     with centre:
         st.markdown(
             """
-            <div style="background:linear-gradient(145deg,rgba(255,255,255,.99),rgba(250,247,255,.98));border:1px solid #e5e6f0;border-radius:18px;padding:28px 30px;box-shadow:0 18px 45px rgba(70,45,140,.10)">
-              <div style="font-size:30px;font-weight:850;color:#122d63">⬢ RAPID</div>
-              <div style="color:#667085;margin-top:5px">Production Decision Dashboard</div>
-              <div style="font-size:12px;color:#8a95a6;margin-top:6px">Explainable AI + rolling operations planning</div>
+            <div style="background:#FFFEFB;border:1px solid #DFD9CC;border-radius:18px;padding:28px 30px;box-shadow:0 12px 35px rgba(16,60,74,.08)">
+              <div style="font-size:30px;font-weight:850;color:#103C4A">⬢ RAPID</div>
+              <div style="color:#61747A;margin-top:5px">Production Decision Dashboard</div>
+              <div style="font-size:12px;color:#61747A;margin-top:6px">Explainable AI + rolling operations planning</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -920,11 +847,13 @@ def change_monitor_df(history):
 def plot_daily_workforce(daily, history):
     if daily.empty:
         return None
-    fig, ax = plt.subplots(figsize=(9.5, 3.7))
+    fig, ax = plt.subplots(figsize=(11, 4.2))
+    fig.patch.set_facecolor("#FFFEFB")
+    ax.set_facecolor("#FFFEFB")
     orders = list(dict.fromkeys(daily["order"].tolist()))
-    cmap = plt.get_cmap("tab10")
+    chart_colours = ["#087E8B", "#B38A4A", "#375F85", "#547A65", "#9C5655", "#70678B"]
     for idx, order in enumerate(orders):
-        colour = cmap(idx % 10)
+        colour = chart_colours[idx % len(chart_colours)]
         sub = daily[daily["order"] == order].copy()
         ax.plot(
             pd.to_datetime(sub["production_date"]),
@@ -1178,7 +1107,7 @@ with st.sidebar:
     selected = st.radio("Navigation", nav_labels, label_visibility="collapsed")
     page = "Admin Settings" if "Admin Settings" in selected else ("Reports" if "Reports" in selected else "Dashboard")
     st.divider()
-    st.markdown("<div class='sidebar-status'><div class='sidebar-status-title'>SYSTEM STATUS</div><div class='status-green'><span class='status-dot'></span>All systems operational</div><div style='font-size:9px;opacity:.65;margin-top:8px'>Prototype session active</div></div>", unsafe_allow_html=True)
+    st.markdown("<div class='sidebar-status'><div class='sidebar-status-title'>SYSTEM STATUS</div><div class='status-green'><span class='status-dot'></span>Planning workspace ready</div><div style='font-size:9px;opacity:.65;margin-top:8px'>Prototype session active</div></div>", unsafe_allow_html=True)
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
     st.markdown("<div class='signed-label'>SIGNED IN AS</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='signed-user'>{st.session_state.get('username','planner')} · {role}</div>", unsafe_allow_html=True)
@@ -1186,7 +1115,7 @@ with st.sidebar:
     if st.button("↪  SIGN OUT", use_container_width=True):
         logout()
     st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
-    st.caption("RAPID v3.1 · UI refresh")
+    st.caption("RAPID · Ocean & Sand")
     st.caption("Explainable AI + Rolling Operations Planning")
 
 # -----------------------------------------------------------------------------
@@ -1328,21 +1257,15 @@ if page == "Reports":
     st.stop()
 
 # -----------------------------------------------------------------------------
-# Dashboard — compact management-first layout
+# Dashboard — single-column management layout
 # -----------------------------------------------------------------------------
-ui_header(
-    "Production Decision Dashboard",
-    "AI/ML-driven planning, resource allocation, process bottleneck visibility & delivery-risk analysis",
-)
-
-# Normalize input data before displaying the top control strip.
+dashboard_header = st.empty()
 st.session_state.orders = normalize_orders(st.session_state.orders)
-_, top_bottleneck_factor, top_bottleneck_process, top_total_machines, top_available_machines, top_machine_pct = machine_availability_map()
-active_order_count = int(((st.session_state.orders["Original Quantity"] - st.session_state.orders["Completed Before Today"] - st.session_state.orders["Actual Production Today"]) > 0).sum())
 
-# Compact controls, aligned with the reference dashboard.
+# Daily controls above the full-width management sections.
 with st.container(border=True):
-    c1, c2, c3, c4, c5, c6 = st.columns([1.08, 1.0, .92, .76, .95, 1.10])
+    ui_section("Today's operating plan", "◴", "Update attendance and production inputs, then save a replan to the daily change history.")
+    c1, c2 = st.columns(2)
     with c1:
         st.session_state.planning_date = st.date_input("Planning Date", value=st.session_state.planning_date)
     with c2:
@@ -1355,19 +1278,9 @@ with st.container(border=True):
             step=1,
             help="Actual production attendance for today.",
         )
-    with c3:
-        st.markdown("<div class='control-label'>ADMIN STANDARD (REFERENCE)</div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='control-value'>{int(settings['benchmark_workers'])}</div><div class='control-sub'>standard workforce</div>", unsafe_allow_html=True)
-    with c4:
-        st.markdown("<div class='control-label'>ACTIVE ORDERS</div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='control-value'>{active_order_count}</div><div class='control-sub'>orders in plan</div>", unsafe_allow_html=True)
-    with c5:
-        st.markdown("<div class='control-label'>MACHINES AVAILABLE</div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='control-value'>{top_available_machines}/{top_total_machines}</div><div class='control-sub'>{top_machine_pct:.0%} overall availability</div>", unsafe_allow_html=True)
-    with c6:
-        st.markdown("<div class='control-label'>ROLLING PLAN</div>", unsafe_allow_html=True)
-        replan_clicked = st.button("▶  REPLAN TODAY", type="primary", use_container_width=True)
-        st.markdown("<div class='top-note'>Recalculates future recommendations from today's actual conditions.</div>", unsafe_allow_html=True)
+    operating_summary = st.empty()
+    replan_clicked = st.button("▶  REPLAN TODAY", type="primary", use_container_width=True)
+    st.caption("Edits update the live forecast. REPLAN TODAY saves a snapshot for comparison.")
 
 # Detailed operational inputs are intentionally collapsed so the dashboard stays management-first.
 with st.expander("✎  Update today's orders, production, materials & machine status", expanded=False):
@@ -1425,11 +1338,19 @@ with st.expander("✎  Update today's orders, production, materials & machine st
         st.dataframe(preview_machine[["Process", "Total Machines", "Available Today", "Breakdown / Unavailable", "Availability %", "Status", "Breakdown / Issue"]], use_container_width=True, hide_index=True, height=285)
         st.caption("Availability is not the same as true utilization. True utilization requires process run-hours/cycle-time data.")
 
+with dashboard_header.container():
+    ui_header("Production Decision Dashboard", "AI/ML-driven planning, resource allocation, process bottleneck visibility & delivery-risk analysis")
+
 # Recalculate after any editor changes.
 bundle = calculate_plan()
 prepared, pred_df, overtime, results, daily, resource_info, recommendations = bundle
 machine_table = machine_status_table()
 amap, bottleneck_factor, bottleneck_process, total_machines, available_machines, overall_machine_pct = machine_availability_map()
+
+operating_summary.markdown(
+    f"<div class='pill-row'><span class='pill'>Standard workforce: {int(settings['benchmark_workers'])}</span><span class='pill'>Active orders: {len(results)}</span><span class='pill'>Machines available: {available_machines}/{total_machines}</span></div>",
+    unsafe_allow_html=True,
+)
 
 if results.empty:
     st.info("Enter at least one active order with remaining quantity to generate the management dashboard.")
@@ -1459,13 +1380,14 @@ active_orders = len(results)
 risk_tone = "green" if worst_risk == "LOW" else ("orange" if worst_risk == "MEDIUM" else "red")
 risk_value_class = "risk-low-text" if worst_risk == "LOW" else ("risk-medium-text" if worst_risk == "MEDIUM" else "risk-high-text")
 
-k1, k2, k3, k4, k5, k6 = st.columns(6)
+k1, k2, k3 = st.columns(3)
 with k1:
     ui_kpi("◆", "OVERALL DELIVERY RISK", worst_risk, f"{late_count} order(s) currently projected late", risk_tone, risk_value_class)
 with k2:
     ui_kpi("◴", "AVAILABLE CAPACITY TODAY", f"{effective_capacity:.0f}", "uppers/day after labour, bottleneck & overtime", "blue")
 with k3:
     ui_kpi("♟", "WORKERS PRESENT", f"{int(st.session_state.workers_present)}", f"{labour_factor:.0%} of {int(settings['benchmark_workers'])} standard workforce", "violet")
+k4, k5, k6 = st.columns(3)
 with k4:
     ui_kpi("⚙", "MACHINES AVAILABLE", f"{available_machines}/{total_machines}", f"{bottleneck_process}: {bottleneck_factor:.0%}", "teal")
 with k5:
@@ -1479,39 +1401,33 @@ st.markdown(
 )
 
 # Risk + allocation
-left, right = st.columns([1.02, 1.08])
-with left:
-    with st.container(border=True):
-        ui_section("AI/ML Delivery-Risk Assessment", "◈")
-        risk_display = pred_df.copy()
-        st.dataframe(risk_display, use_container_width=True, hide_index=True, height=220)
-        st.caption("LOW = manageable · MEDIUM = warning · HIGH = serious delivery risk. Prototype Model Confidence is not certainty of actual delivery outcome.")
-with right:
-    with st.container(border=True):
-        ui_section("Resource Allocation Summary", "⌘")
-        alloc = results[["order", "day1_workers", "current_process", "completion_day", "projected_delay_days", "on_time"]].copy()
-        alloc["Projected Completion"] = alloc["completion_day"].apply(lambda x: add_business_days(st.session_state.planning_date, int(x) - 1).strftime("%d %b %Y") if pd.notna(x) else "—")
-        alloc = alloc[["order", "day1_workers", "current_process", "Projected Completion", "projected_delay_days", "on_time"]]
-        alloc.columns = ["Order", "Recommended Workers Today", "Primary Process Today", "Projected Completion", "Projected Delay (Days)", "On Time?"]
-        st.dataframe(alloc, use_container_width=True, hide_index=True, height=220)
-        with st.expander("View process-wise worker allocation"):
-            st.dataframe(build_process_allocation(results), use_container_width=True, hide_index=True)
-            st.caption("Workers are assigned to the planner-selected current production process; the prototype does not falsely allocate the same worker across multiple stages simultaneously.")
+with st.container(border=True):
+    ui_section("AI/ML Delivery-Risk Assessment", "◈")
+    risk_display = pred_df.copy()
+    st.dataframe(risk_display, use_container_width=True, hide_index=True, height=min(400, 38 + 35 * len(risk_display)))
+    st.caption("LOW = manageable · MEDIUM = warning · HIGH = serious delivery risk. Prototype Model Confidence is not certainty of actual delivery outcome.")
+with st.container(border=True):
+    ui_section("Resource Allocation Summary", "⌘")
+    alloc = results[["order", "day1_workers", "current_process", "completion_day", "projected_delay_days", "on_time"]].copy()
+    alloc["Projected Completion"] = alloc["completion_day"].apply(lambda x: add_business_days(st.session_state.planning_date, int(x) - 1).strftime("%d %b %Y") if pd.notna(x) else "—")
+    alloc = alloc[["order", "day1_workers", "current_process", "Projected Completion", "projected_delay_days", "on_time"]]
+    alloc.columns = ["Order", "Recommended Workers Today", "Primary Process Today", "Projected Completion", "Projected Delay (Days)", "On Time?"]
+    st.dataframe(alloc, use_container_width=True, hide_index=True, height=min(400, 38 + 35 * len(alloc)))
+    with st.expander("View process-wise worker allocation"):
+        st.dataframe(build_process_allocation(results), use_container_width=True, hide_index=True)
+        st.caption("Workers are assigned to the planner-selected current production process; the prototype does not falsely allocate the same worker across multiple stages simultaneously.")
 
 # Machine and material visibility
-mleft, mright = st.columns([1.05, 1])
-with mleft:
-    with st.container(border=True):
-        ui_section("Machine Availability & Bottleneck View", "⚙", "Process-wise machine visibility makes breakdown location and production bottlenecks explicit.")
-        machine_display = machine_table[["Process", "Total Machines", "Available Today", "Breakdown / Unavailable", "Availability %", "Status"]].copy()
-        machine_display["Availability %"] = machine_display["Availability %"].round(1)
-        st.dataframe(machine_display, use_container_width=True, hide_index=True, height=255)
-        st.caption(f"Current bottleneck: {bottleneck_process} ({bottleneck_factor:.1%} available).")
-with mright:
-    with st.container(border=True):
-        ui_section("Material Readiness & Constraint Tracker", "▧", "Blocked/held material removes an order from eligible production allocation until the ready condition is restored.")
-        material_df = build_material_tracker(prepared)
-        st.dataframe(material_df, use_container_width=True, hide_index=True, height=255)
+with st.container(border=True):
+    ui_section("Machine Availability & Bottleneck View", "⚙", "Process-wise machine visibility makes breakdown location and production bottlenecks explicit.")
+    machine_display = machine_table[["Process", "Total Machines", "Available Today", "Breakdown / Unavailable", "Availability %", "Status"]].copy()
+    machine_display["Availability %"] = machine_display["Availability %"].round(1)
+    st.dataframe(machine_display, use_container_width=True, hide_index=True, height=min(460, 38 + 35 * len(machine_display)))
+    st.caption(f"Current bottleneck: {bottleneck_process} ({bottleneck_factor:.1%} available).")
+with st.container(border=True):
+    ui_section("Material Readiness & Constraint Tracker", "▧", "Blocked/held material removes an order from eligible production allocation until the ready condition is restored.")
+    material_df = build_material_tracker(prepared)
+    st.dataframe(material_df, use_container_width=True, hide_index=True, height=min(400, 38 + 35 * len(material_df)))
 
 # Daily Change Monitor, rendered as compact cards.
 change_df = change_monitor_df(st.session_state.plan_history)
@@ -1520,51 +1436,42 @@ with st.container(border=True):
     if change_df.empty:
         st.info("Run REPLAN TODAY on at least two planning updates to activate previous-vs-today comparison.")
     else:
-        changes = change_df.head(5).to_dict("records")
-        cols = st.columns(len(changes))
-        for col, row in zip(cols, changes):
-            with col:
-                st.markdown(f"<div class='change-card'><div class='change-label'>{row['Indicator']}</div><div class='change-values'>{row['Previous Plan']} → {row['Today']}</div><div class='change-delta'>Change {row['Change']}</div></div>", unsafe_allow_html=True)
+        st.dataframe(change_df, use_container_width=True, hide_index=True)
 
 # Workforce allocation + Management Decision Centre
-left2, right2 = st.columns([1.03, 1])
-with left2:
-    with st.container(border=True):
-        ui_section("Daily Workforce Allocation by Order", "⌁")
-        fig = plot_daily_workforce(daily, st.session_state.plan_history)
-        if fig is not None:
-            st.pyplot(fig, use_container_width=True)
-            plt.close(fig)
-        st.caption("Production Date × Workers Allocated. Actual worker use is retained in replan history when entered; future allocation is the revised RAPID recommendation.")
-with right2:
-    with st.container(border=True):
-        ui_section("Management Decision Centre", "★")
-        decision_df = management_decision_rows(results, prepared, labour_factor, machine_table)
-        act_now = int((decision_df["Priority"] == "🔴 ACT NOW").sum())
-        action_today = int((decision_df["Priority"] == "🟠 ACTION TODAY").sum())
-        if act_now:
-            st.markdown(f"<div class='action-banner action-red'>⚠ ACTION REQUIRED · {act_now} critical management action(s) identified.</div>", unsafe_allow_html=True)
-        elif action_today:
-            st.markdown(f"<div class='action-banner action-amber'>Attention needed today · {action_today} corrective action(s) identified.</div>", unsafe_allow_html=True)
-        else:
-            st.markdown("<div class='action-banner action-green'>✓ No immediate corrective action is required under the current plan.</div>", unsafe_allow_html=True)
-        st.dataframe(decision_df[["Priority", "Issue", "Affected", "Recommended Action", "When"]].head(6), use_container_width=True, hide_index=True, height=285)
-        with st.expander("Why · Expected Impact · If No Action"):
-            st.dataframe(decision_df, use_container_width=True, hide_index=True)
+with st.container(border=True):
+    ui_section("Daily Workforce Allocation by Order", "⌁")
+    fig = plot_daily_workforce(daily, st.session_state.plan_history)
+    if fig is not None:
+        st.pyplot(fig, use_container_width=True)
+        plt.close(fig)
+    st.caption("Production Date × Workers Allocated. Actual worker use is retained in replan history when entered; future allocation is the revised RAPID recommendation.")
+with st.container(border=True):
+    ui_section("Management Decision Centre", "★")
+    decision_df = management_decision_rows(results, prepared, labour_factor, machine_table)
+    act_now = int((decision_df["Priority"] == "🔴 ACT NOW").sum())
+    action_today = int((decision_df["Priority"] == "🟠 ACTION TODAY").sum())
+    if act_now:
+        st.markdown(f"<div class='action-banner action-red'>⚠ ACTION REQUIRED · {act_now} critical management action(s) identified.</div>", unsafe_allow_html=True)
+    elif action_today:
+        st.markdown(f"<div class='action-banner action-amber'>Attention needed today · {action_today} corrective action(s) identified.</div>", unsafe_allow_html=True)
+    else:
+        st.markdown("<div class='action-banner action-green'>✓ No immediate corrective action is required under the current plan.</div>", unsafe_allow_html=True)
+    st.dataframe(decision_df[["Priority", "Issue", "Affected", "Recommended Action", "When"]].head(6), use_container_width=True, hide_index=True, height=38 + 35 * min(6, len(decision_df)))
+    with st.expander("Why · Expected Impact · If No Action"):
+        st.dataframe(decision_df, use_container_width=True, hide_index=True)
 
 # What-if impact analysis
 with st.container(border=True):
     ui_section("What-if Impact Analysis", "⌁", "Hypothetical simulations only. Scenarios compare possible disruptions against today's Current Operating Plan and do not modify the active plan.")
     scenario_df, scenario_configs = evaluate_scenarios(bundle, machine_table)
     scenario_cards = scenario_df.head(6).to_dict("records")
-    card_cols = st.columns(len(scenario_cards))
-    for col, sc in zip(card_cols, scenario_cards):
-        with col:
-            impact_colour = "#139b66" if "STABLE" in sc["Impact"] else ("#d58a08" if "WATCH" in sc["Impact"] or "WARNING" in sc["Impact"] else "#e04466")
-            st.markdown(
-                f"<div class='scenario-card'><div class='scenario-name'>{sc['Scenario']}</div><div class='scenario-impact' style='color:{impact_colour}'>{sc['Impact']}</div><div class='scenario-big'>{sc['Orders On Time']}</div><div class='scenario-small'>orders on time · {sc['Projected Delay (Days)']} projected delay day(s)<br>{sc['Comparison']}</div></div>",
-                unsafe_allow_html=True,
-            )
+    for sc in scenario_cards:
+        impact_colour = "#20745B" if "STABLE" in sc["Impact"] else ("#946013" if "WATCH" in sc["Impact"] or "WARNING" in sc["Impact"] else "#AD3E40")
+        st.markdown(
+            f"<div class='scenario-card'><div class='scenario-name'>{sc['Scenario']}</div><div class='scenario-impact' style='color:{impact_colour}'>{sc['Impact']}</div><div class='scenario-big'>{sc['Orders On Time']}</div><div class='scenario-small'>orders on time · {sc['Projected Delay (Days)']} projected delay day(s)<br>{sc['Comparison']}</div></div>",
+            unsafe_allow_html=True,
+        )
 
     with st.expander("View assumptions, affected orders, reasons & suggested responses"):
         st.dataframe(scenario_df, use_container_width=True, hide_index=True)
