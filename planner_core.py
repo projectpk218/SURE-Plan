@@ -4,6 +4,28 @@ import pandas as pd
 RISK_MULTIPLIER = {"LOW": 1.00, "MEDIUM": 1.18, "HIGH": 1.40}
 
 
+def validate_order_ids(order_ids):
+    """Reject ambiguous IDs before ID-keyed allocations or lookups are built."""
+    seen = set()
+    duplicates = set()
+    for value in order_ids:
+        order_id = str(value).strip()
+        if order_id in seen:
+            duplicates.add(order_id)
+        seen.add(order_id)
+    if duplicates:
+        raise ValueError("Duplicate order IDs: " + ", ".join(sorted(duplicates)) + ". Enter a unique ID for each order.")
+
+
+def business_day_deadline(start_date, due_date):
+    """Signed due-day index relative to the first scheduled business day (day 1)."""
+    start = pd.offsets.BDay().rollforward(pd.Timestamp(start_date).normalize())
+    due = pd.Timestamp(due_date).normalize()
+    if due < start:
+        return 1 - len(pd.bdate_range(due + pd.Timedelta(days=1), start))
+    return len(pd.bdate_range(start, due))
+
+
 def business_days_between(start_date, due_date):
     """Business days from planning date through due date (minimum 1)."""
     start = pd.Timestamp(start_date).normalize()
@@ -24,7 +46,7 @@ def business_days_until_ready(start_date, ready_date):
 
 
 def add_business_days(start_date, working_days):
-    d = pd.Timestamp(start_date).normalize()
+    d = pd.offsets.BDay().rollforward(pd.Timestamp(start_date).normalize())
     if working_days <= 0:
         return d
     return pd.bdate_range(d, periods=working_days + 1)[-1]
@@ -97,9 +119,11 @@ def allocate_workers_for_day(
     Allocate the shared workforce among material-ready orders using earliest-due-date
     protection, adjusted for ML risk and each order's current-process machine factor.
     """
+    validate_order_ids(s["order"] for s in states)
     ready = [
         s for s in states
         if s["remaining"] > 1e-9 and day >= int(s.get("material_delay_days", 0))
+        and _capacity_per_worker(s, base_capacity, benchmark_workers, overtime_fraction) > 1e-9
     ]
     allocation = {s["order"]: 0 for s in states}
     if not ready or available_workers <= 0:
@@ -163,6 +187,7 @@ def simulate_orders(
     Simulate remaining order completion with shared labour and order/process-specific
     machine availability.
     """
+    validate_order_ids(o["order"] for o in orders)
     benchmark_workers = max(1, int(benchmark_workers))
     # Round rather than floor so an exact attendance ratio (e.g. 110/150)
     # returns the actual integer attendance instead of occasionally losing one
@@ -223,8 +248,10 @@ def simulate_orders(
 
     results = []
     for s in states:
-        completion = s["completion_day"] or int(horizon) + 1
-        projected_delay = max(0, completion - int(s["due_day"]))
+        completion = s["completion_day"]
+        # Unfinished work has no forecast completion. The next day after the
+        # horizon supplies only a lower bound on delay, never a completion date.
+        projected_delay = max(0, (completion if completion is not None else int(horizon) + 1) - int(s["due_day"]))
         day1 = next(
             (
                 r["workers_allocated"]
@@ -246,9 +273,10 @@ def simulate_orders(
             "capacity_ratio": float(s.get("capacity_ratio", 0)),
             "machine_availability": float(s.get("machine_availability", 1.0)),
             "day1_workers": int(day1),
-            "completion_day": int(completion),
+            "completion_day": completion,
             "projected_delay_days": int(projected_delay),
-            "on_time": "YES" if projected_delay == 0 else "NO",
+            "projected_delay_is_lower_bound": completion is None,
+            "on_time": ("YES" if projected_delay == 0 else "NO") if completion is not None else ("NO" if projected_delay > 0 else "UNKNOWN"),
         })
 
     return (
@@ -271,6 +299,11 @@ def build_recommendations(results, orders, labour_availability, overtime_fractio
         o = order_lookup[order]
         reasons = []
         actions = []
+
+        unfinished = pd.isna(r["completion_day"])
+        if unfinished:
+            reasons.append("not completed within the planning horizon; completion date is unknown and projected delay is a minimum only")
+            actions.append("resolve production constraints and replan before committing a completion date")
 
         status = str(o.get("material_status", "Ready"))
         if status not in {"Ready", "Partially Ready"}:
@@ -309,7 +342,7 @@ def build_recommendations(results, orders, labour_availability, overtime_fractio
 
         recommendations.append({
             "order": order,
-            "status": "PROJECTED LATE" if r["on_time"] == "NO" else "ON TIME",
+            "status": "NOT COMPLETED WITHIN HORIZON" if unfinished else ("PROJECTED LATE" if r["on_time"] == "NO" else "ON TIME"),
             "risk": str(r.get("risk", "LOW")).upper(),
             "reason": "; ".join(dict.fromkeys(reasons)) if reasons else "no major disruption indicator under the selected assumptions",
             "recommended_action": "; ".join(dict.fromkeys(actions)),

@@ -10,6 +10,8 @@ import matplotlib.dates as mdates
 
 from planner_core import (
     business_days_between,
+    business_day_deadline,
+    validate_order_ids,
     business_days_until_ready,
     add_business_days,
     recommend_overtime,
@@ -516,10 +518,13 @@ def normalize_orders(df):
 
 
 def material_delay_info(row, planning_date_value, status_override=None, extra_delay=0):
-    status = status_override or str(row.get("Material Status", "Ready"))
+    current_status = str(row.get("Material Status", "Ready"))
+    status = status_override or current_status
     expected = row.get("Expected Material Ready Date")
     planning_delay = 0
-    if status in BLOCKED_MATERIAL_STATUSES:
+    # Scenario duration extends the real material delay. A hypothetical hold
+    # must not create an unknown 120-day base delay for an otherwise ready order.
+    if current_status in BLOCKED_MATERIAL_STATUSES:
         if pd.isna(expected):
             # Keep the order effectively blocked in the operations simulation until a ready date is entered.
             planning_delay = 120
@@ -529,7 +534,7 @@ def material_delay_info(row, planning_date_value, status_override=None, extra_de
     # Training scenarios only cover 0-6 material-delay days. Keep ML input in-range and disclose it.
     ml_delay = min(6, planning_delay)
     eligible_today = status not in BLOCKED_MATERIAL_STATUSES and planning_delay == 0
-    if status == "Partially Ready":
+    if status == "Partially Ready" and planning_delay == 0:
         eligible_today = True
     return status, planning_delay, ml_delay, eligible_today
 
@@ -573,6 +578,11 @@ def calculate_plan(
     overtime_override=None,
 ):
     orders_df = normalize_orders(orders_source if orders_source is not None else st.session_state.orders)
+    try:
+        validate_order_ids(orders_df.loc[orders_df["Order"] != "", "Order"])
+    except ValueError as exc:
+        st.error(str(exc))
+        st.stop()
     workers = int(st.session_state.workers_present if workers_override is None else workers_override)
     workforce = max(1, int(settings["benchmark_workers"]))
     # ML training range stops at 100%; operationally this avoids claiming linear gains above the standard workforce.
@@ -626,7 +636,7 @@ def calculate_plan(
             "order": order_id,
             "original_quantity": original_qty,
             "quantity": remaining_qty,
-            "due_day": days,
+            "due_day": business_day_deadline(st.session_state.planning_date, row["Due Date"]),
             "days_remaining": days,
             "material_delay_days": planning_delay,
             "ml_material_delay_days": ml_delay,
@@ -800,7 +810,17 @@ def management_decision_rows(results, prepared, labour_factor, machine_table):
                 "If No Action": "WIP may accumulate before the missing component/process stage.",
             })
 
-        if int(r["projected_delay_days"]) > 0:
+        if pd.isna(r["completion_day"]):
+            rows.append({
+                "Priority": "🔴 ACT NOW",
+                "Issue": "No completion within planning horizon",
+                "Affected": f"Order {r['order']}",
+                "Recommended Action": "Resolve resource/material constraints and replan before committing a completion date.",
+                "When": "Immediate",
+                "Expected Impact": "Establish a feasible completion forecast; reported projected delay is a minimum only.",
+                "If No Action": "Completion remains unknown under the current assumptions.",
+            })
+        elif int(r["projected_delay_days"]) > 0:
             rows.append({
                 "Priority": "🔴 ACT NOW",
                 "Issue": f"Projected delivery delay: {int(r['projected_delay_days'])} working day(s)",
@@ -1268,7 +1288,7 @@ if page == "Reports":
         st.stop()
 
     export_results = results.copy()
-    export_results["projected_completion_date"] = export_results["completion_day"].apply(lambda x: add_business_days(st.session_state.planning_date, int(x) - 1).date())
+    export_results["projected_completion_date"] = export_results["completion_day"].apply(lambda x: add_business_days(st.session_state.planning_date, int(x) - 1).date() if pd.notna(x) else pd.NaT)
     export_results = export_results.rename(columns={"projected_delay_days": "projected_delay_days_working"})
 
     with st.container(border=True):
@@ -1470,7 +1490,7 @@ with right:
     with st.container(border=True):
         ui_section("Resource Allocation Summary", "⌘")
         alloc = results[["order", "day1_workers", "current_process", "completion_day", "projected_delay_days", "on_time"]].copy()
-        alloc["Projected Completion"] = alloc["completion_day"].apply(lambda x: add_business_days(st.session_state.planning_date, int(x) - 1).strftime("%d %b %Y"))
+        alloc["Projected Completion"] = alloc["completion_day"].apply(lambda x: add_business_days(st.session_state.planning_date, int(x) - 1).strftime("%d %b %Y") if pd.notna(x) else "—")
         alloc = alloc[["order", "day1_workers", "current_process", "Projected Completion", "projected_delay_days", "on_time"]]
         alloc.columns = ["Order", "Recommended Workers Today", "Primary Process Today", "Projected Completion", "Projected Delay (Days)", "On Time?"]
         st.dataframe(alloc, use_container_width=True, hide_index=True, height=220)
