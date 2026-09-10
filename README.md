@@ -1,10 +1,10 @@
-# RAPID v3.0 — Final Consolidated Management Dashboard
+# RAPID — Production Planning and Daily Operations Dashboard
 
-RAPID is a rolling daily production planning and decision-support prototype for concurrent make-to-order shoe-upper production.
+RAPID is a rolling daily production planning and decision-support tool for concurrent make-to-order shoe-upper production. It combines explainable planning calculations with a shared daily operating record so planners and managers can work from the same saved plan.
 
-## Main v3.0 capabilities
+## Main capabilities
 
-- Professional single-page management dashboard with the existing navy + blue/violet/magenta theme.
+- Professional single-column Ocean Blue and Warm Sand dashboard with responsive full-width tables and charts.
 - Admin/Planner role separation.
 - Admin-editable standard workforce (default prototype reference: 150 workers).
 - Admin-editable standard production capacity and maximum overtime.
@@ -18,6 +18,8 @@ RAPID is a rolling daily production planning and decision-support prototype for 
 - Daily Workforce Allocation by Order using production dates and Actual vs Planned display when actual worker history is entered.
 - Management Decision Centre with ACT NOW / ACTION TODAY / MONITOR / NO ACTION priorities.
 - What-if Impact Analysis with explicit assumptions, scenario-impact badges, affected orders, reasons, responses, and recovery-action testing.
+- Daily targets, good output, downtime/loss observations, production reasons and corrective actions with owners, due dates and follow-up status.
+- Persistent configuration, daily records, replan history and JSON backup exports through SQLite locally or PostgreSQL for shared deployment.
 - CSV/text report exports and academic/prototype disclosure.
 
 ## Important academic disclosure
@@ -28,24 +30,32 @@ The ML classifier is a proof-of-concept trained on researcher-designed simulated
 
 ```bash
 pip install -r requirements.txt
+```
+
+For a local demonstration, create `.streamlit/secrets.toml` from `.streamlit/secrets.toml.example` and set a private SQLite URL. Then run:
+
+```bash
 streamlit run app.py
 ```
 
-## Update the existing GitHub / Streamlit deployment
+The local SQLite file survives app restarts on the same computer. It is intended for local use and does not provide shared cloud persistence.
+
+## Deploy with shared records
+
+Use PostgreSQL for a deployed factory workspace. Create the database, add the database URL and explicit Admin/Planner credentials to the deployment's private Streamlit Secrets, then deploy the repository. RAPID creates its tables on first connection and uses optimistic revision checks so one user's save cannot silently overwrite another user's newer save.
+
+Follow [STORAGE_SETUP.md](STORAGE_SETUP.md) for the provider-neutral setup, required secret names, first-save verification, daily workflow, conflict handling and backup guidance. The app intentionally stops with a clear setup message when a deployed instance has no database URL; it does not pretend that session memory is a reliable production record.
+
+For Streamlit Community Cloud, configure secrets in the app's Settings rather than committing them to GitHub. Keep `.streamlit/secrets.toml` private; only the placeholder example belongs in the repository.
+
+## Update an existing GitHub / Streamlit deployment
 
 1. Replace `app.py` in the GitHub repository with the new `app.py`.
 2. Replace `planner_core.py` with the new `planner_core.py`.
 3. Keep `prototype_training_data.csv` in the repository root (replace it with the packaged copy if needed).
 4. Replace/update `requirements.txt` with the packaged version.
-5. Commit the changes to the `main` branch and Push origin.
-6. Streamlit Community Cloud should redeploy automatically. If not, open the app settings and reboot/redeploy the app.
+5. Configure PostgreSQL and the required private secrets before directing production users to the new release.
+6. Commit the changes to the `main` branch and push origin.
+7. Streamlit Community Cloud should redeploy automatically. If not, open the app settings and reboot/redeploy the app.
 
-Do **not** upload a real `.streamlit/secrets.toml` containing passwords to a public GitHub repository. Use Streamlit Secrets instead.
-
-Fallback prototype credentials (only when Secrets are not configured):
-- Admin: `admin` / `admin2026`
-- Planner: `planner` / `user2026`
-
-## Prototype persistence note
-
-Rolling plan history is stored in Streamlit session state in this version. It can reset when a browser session or Streamlit Cloud instance restarts. For permanent multi-day production history, connect the prototype to a persistent database or external data store in a later deployment stage.
+When no shared database is configured locally, RAPID keeps the demo login fallback for convenience. A PostgreSQL deployment requires all four explicit login secrets, so the demo credentials are not silently used in production.

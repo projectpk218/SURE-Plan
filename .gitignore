@@ -1,2 +1,5 @@
 .streamlit/secrets.toml
 __pycache__/
+.rapid-data/
+*.sqlite3
+*.sqlite3-*

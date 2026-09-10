@@ -1,5 +1,8 @@
 """Real Streamlit smoke checks; install requirements.txt before running."""
 import unittest
+import os
+import tempfile
+from unittest.mock import patch
 from pathlib import Path
 
 try:
@@ -10,6 +13,17 @@ except ModuleNotFoundError:
 
 @unittest.skipIf(AppTest is None, "Install requirements.txt for Streamlit runtime tests")
 class DashboardRuntimeTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.env = patch.dict(os.environ, {"RAPID_DATABASE_URL": "sqlite:///" + (Path(self.temp.name) / "rapid.sqlite3").as_posix()})
+        self.env.start()
+        self.addCleanup(self.env.stop)
+        # Cached engines must release Windows database handles before temp cleanup.
+        if AppTest is not None:
+            import streamlit as st
+            self.addCleanup(st.cache_resource.clear)
+
     def login(self, role="admin"):
         app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"), default_timeout=60).run()
         self.assertEqual(len(app.exception), 0)
@@ -46,11 +60,36 @@ class DashboardRuntimeTests(unittest.TestCase):
         app = self.login()
         app.radio[0].set_value(next(v for v in app.radio[0].options if "Reports" in v)).run()
         self.assertEqual(len(app.exception), 0, [e.message for e in app.exception])
-        self.assertEqual(len(app.get("download_button")), 7)
+        labels = {button.label for button in app.get("download_button")}
+        self.assertTrue({"Order Results CSV", "Daily Allocation CSV", "Machine Status CSV", "Decision Centre CSV",
+                         "Material Tracker CSV", "Replan History CSV", "Management Summary TXT"}.issubset(labels))
         app.radio[0].set_value(next(v for v in app.radio[0].options if "Admin Settings" in v)).run()
         self.assertEqual(len(app.exception), 0, [e.message for e in app.exception])
         next(n for n in app.number_input if n.label == "Standard Production Capacity (uppers/day)").set_value(320.0).run()
         self.assertEqual(app.session_state.settings["base_capacity"], 320)
+        self.click(app, "Save Admin Settings")
+        reopened = self.login("planner")
+        self.assertEqual(reopened.session_state.settings["base_capacity"], 320)
+
+    def test_saved_plan_survives_signout_and_a_separate_planner_session(self):
+        app = self.login()
+        next(n for n in app.number_input if n.label == "Workers Present Today").set_value(117).run()
+        self.click(app, "REPLAN TODAY")
+        self.click(app, "SIGN OUT")
+        reopened = self.login("planner")
+        self.assertEqual(reopened.session_state.workers_present, 117)
+        self.assertEqual(reopened.session_state.plan_history[-1]["workers_present"], 117)
+
+    def test_stale_planner_does_not_overwrite_saved_attendance(self):
+        first = self.login("planner")
+        second = self.login("planner")
+        next(n for n in first.number_input if n.label == "Workers Present Today").set_value(115).run()
+        self.click(first, "REPLAN TODAY")
+        next(n for n in second.number_input if n.label == "Workers Present Today").set_value(90).run()
+        self.click(second, "REPLAN TODAY")
+        self.assertTrue(any("Another user" in error.value for error in second.error))
+        reopened = self.login("planner")
+        self.assertEqual(reopened.session_state.workers_present, 115)
 
     def test_planner_permissions_zero_attendance_and_reports(self):
         app = self.login("planner")

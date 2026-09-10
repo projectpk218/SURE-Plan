@@ -2,11 +2,17 @@ from pathlib import Path
 from datetime import date
 import copy
 import math
+import os
+import json
 import pandas as pd
 import streamlit as st
 from sklearn.tree import DecisionTreeClassifier, plot_tree
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+
+from rapid_storage import RapidStore, StorageConflict, StorageConfigurationError, configuration_payload, operations_payload, frame_payload, payload_frame
+from rapid_workspace import Workspace
+from production_management import render_production_management, daily_progress, action_frame, action_summary
 
 from planner_core import (
     business_days_between,
@@ -74,93 +80,7 @@ st.set_page_config(
 # RAPID management-dashboard styling.
 # The calculation/ML logic is unchanged; this block only controls presentation.
 # -----------------------------------------------------------------------------
-st.markdown(
-    """
-    <style>
-    :root {
-        --ocean:#087E8B; --deep:#103C4A; --ink:#183B49; --text:#294C58;
-        --muted:#61747A; --sand:#F4EFE6; --line:#DFD9CC; --panel:#FFFEFB;
-        --green:#20745B; --orange:#946013; --red:#AD3E40;
-    }
-    .stApp {background:var(--sand);color:var(--text);}
-    html,body {font-family:'Segoe UI',sans-serif;}
-    [data-testid="stHeader"] {background:rgba(244,239,230,.96);}
-    .block-container {max-width:1240px;padding:2.2rem 2rem 3rem;}
-    h1,h2,h3 {color:var(--ink);letter-spacing:-.025em;}
-    [data-testid="stSidebar"] {background:var(--deep);border-right:1px solid #234F5C;}
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"],
-    [data-testid="stSidebar"] label,[data-testid="stSidebar"] .stCaption {color:#F4EFE6;}
-    [data-testid="stSidebar"] .stRadio label {padding:.7rem .8rem;border-radius:8px;}
-    [data-testid="stSidebar"] .stRadio label:hover {background:#1B4B59;}
-    [data-testid="stSidebar"] .stRadio label:has(input:checked) {background:#1E5967;box-shadow:inset 3px 0 #D8BB8B;}
-    [data-testid="stSidebar"] hr {border-color:#35606B;}
-    [data-testid="stSidebar"] .stButton button {background:#F4EFE6;color:var(--deep);border-color:#D8BB8B;}
-    [data-testid="stSidebar"] .stButton [data-testid="stMarkdownContainer"] {color:var(--deep);}
-    .rapid-brand {display:flex;align-items:center;gap:12px;margin:10px 0 28px;}
-    .rapid-logo {width:44px;height:48px;flex-shrink:0;border-radius:10px;background:#D8BB8B;color:#103C4A;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;}
-    .rapid-brand-title {font-size:28px;font-weight:800;color:#FFFEFB;letter-spacing:.04em;}
-    .rapid-brand-sub {font-size:10px;line-height:1.55;color:#C6D6D8;max-width:160px;margin-top:4px;}
-    .sidebar-status {padding:16px;border:1px solid #35606B;border-radius:10px;margin-top:20px;background:#164451;}
-    .sidebar-status-title,.signed-label {font-size:11px;letter-spacing:.08em;color:#C6D6D8;margin-bottom:8px;}
-    .status-green {color:#B9DBCD;font-size:13px;}
-    .status-dot {display:inline-block;width:7px;height:7px;background:#86CBB2;border-radius:50%;margin-right:8px;}
-    .signed-user {font-size:14px;color:#FFFEFB;}
-    .dashboard-header {display:flex;align-items:center;justify-content:space-between;gap:20px;margin:4px 0 22px;padding-bottom:22px;border-bottom:1px solid var(--line);}
-    .dashboard-title-wrap {display:flex;gap:12px;align-items:center;}
-    .menu-orb {display:none;}
-    .dashboard-h1 {font-size:30px;font-weight:750;line-height:1.2;color:var(--deep);letter-spacing:-.03em;}
-    .dashboard-sub {font-size:14px;line-height:1.5;color:var(--muted);margin-top:7px;max-width:600px;}
-    .header-right {display:flex;gap:10px;flex-shrink:0;}
-    .header-chip {border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:10px 13px;}
-    .header-chip-k {font-size:11px;color:var(--muted);}
-    .header-chip-v {font-size:13px;font-weight:650;color:var(--deep);margin-top:4px;}
-    .avatar-chip {display:flex;align-items:center;gap:9px;}
-    .avatar-circle {width:30px;height:30px;border-radius:50%;background:#E0EFF0;color:var(--ocean);display:flex;align-items:center;justify-content:center;font-weight:750;}
-    [data-testid="stVerticalBlockBorderWrapper"], [data-testid="stLayoutWrapper"] > [data-testid="stVerticalBlockBorderWrapper"] {border-radius:12px !important;}
-    [data-testid="stVerticalBlockBorderWrapper"] {background:var(--panel);border-color:var(--line) !important;}
-    [data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] .section-title),
-    [data-testid="stVerticalBlock"][style*="border: 1px"] {background:var(--panel);border-color:var(--line) !important;border-radius:12px !important;}
-    .stButton > button,.stDownloadButton > button {border-radius:8px;min-height:2.7rem;font-weight:650;}
-    .stButton > button[kind="primary"] {background:var(--ocean);color:white;border:1px solid var(--ocean);}
-    .stButton > button[kind="primary"]:hover {background:#096774;border-color:#096774;}
-    .section-title {font-size:20px;line-height:1.35;font-weight:700;color:var(--deep);margin:7px 0 10px;display:flex;align-items:center;gap:10px;}
-    .section-icon {font-size:18px;color:var(--ocean);}
-    .section-sub {font-size:14px;color:var(--muted);line-height:1.6;margin:0 0 16px;}
-    .kpi-card {margin-bottom:12px;--accent:var(--ocean);padding:20px;border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:10px;background:var(--panel);min-height:156px;height:100%;}
-    .kpi-blue,.kpi-violet,.kpi-teal {--accent:var(--ocean);}
-    .kpi-green {--accent:var(--green);}.kpi-orange {--accent:var(--orange);}.kpi-red {--accent:var(--red);}
-    .kpi-top {display:flex;align-items:center;gap:8px;}
-    .kpi-icon {color:var(--accent);font-size:18px;}
-    .kpi-label {font-size:11px;letter-spacing:.06em;font-weight:700;color:var(--muted);}
-    .kpi-value {font-size:30px;font-weight:750;color:var(--deep);margin:12px 0 7px;line-height:1.1;}
-    .kpi-sub {font-size:12px;color:var(--muted);line-height:1.5;}
-    .risk-low-text {color:var(--green);}.risk-medium-text {color:var(--orange);}.risk-high-text {color:var(--red);}
-    .pill-row {display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 16px;}
-    .pill {border-radius:6px;background:#EAE3D6;padding:7px 10px;color:#465C61;font-size:12px;}
-    [data-testid="stDataFrame"] {border:1px solid var(--line);border-radius:8px;overflow:hidden;}
-    details[data-testid="stExpander"] {background:var(--panel);border-color:var(--line);border-radius:10px;}
-    details[data-testid="stExpander"] summary {color:var(--deep);font-weight:600;}
-    .scenario-card {display:grid;grid-template-columns:2fr 1fr 1fr 2fr;gap:16px;align-items:center;background:var(--panel);border-bottom:1px solid var(--line);padding:18px 4px;}
-    .scenario-name {font-size:14px;font-weight:700;color:var(--deep);}
-    .scenario-impact {font-size:12px;font-weight:700;}
-    .scenario-big {font-size:23px;color:var(--deep);font-weight:750;}
-    .scenario-small {font-size:12px;color:var(--muted);line-height:1.6;}
-    .action-banner {border-radius:8px;padding:13px 16px;font-size:14px;font-weight:600;margin-bottom:16px;}
-    .action-red {background:#FAEEEB;color:#913738;border:1px solid #ECD4CF;}
-    .action-amber {background:#F8F0DE;color:#855910;border:1px solid #E8D9B9;}
-    .action-green {background:#ECF4EE;color:#25634F;border:1px solid #D2E3D7;}
-    .academic-note {font-size:12px;line-height:1.7;color:var(--muted);border-top:1px solid var(--line);padding-top:20px;margin-top:24px;}
-    .top-note {font-size:12px;color:var(--muted);margin-top:6px;}
-    @media(max-width:1100px) {.header-right {display:none;}.dashboard-h1 {font-size:27px;}}
-    @media(max-width:640px) {
-        .block-container {padding:4.5rem 1rem 2rem;}.dashboard-h1 {font-size:24px;}
-        .scenario-card {grid-template-columns:1fr 1fr;gap:10px;}.scenario-small {grid-column:1 / -1;}
-        .kpi-card {min-height:132px;}.section-title {font-size:18px;}
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+st.markdown(f"<style>{(BASE / 'rapid_theme.css').read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
 
 
 @st.cache_resource
@@ -225,6 +145,12 @@ def login_page():
                 st.error("Invalid username or password.")
         st.caption("Admin controls benchmark assumptions. Planner enters today's actual operating conditions and active orders.")
 
+
+database_url = os.environ.get("RAPID_DATABASE_URL") or get_secret("RAPID_DATABASE_URL", None)
+if database_url and not database_url.startswith("sqlite:"):
+    if not all(get_secret(key, None) for key in ("ADMIN_USERNAME", "ADMIN_PASSWORD", "USER_USERNAME", "USER_PASSWORD")):
+        st.error("Configure Admin and Planner login credentials in Streamlit Secrets before using the shared database.")
+        st.stop()
 
 if not st.session_state.get("authenticated", False):
     login_page()
@@ -1090,6 +1016,56 @@ def ui_header(title, subtitle):
     )
 
 
+# Shared persistence is separate from all production and ML calculations.
+@st.cache_resource
+def get_database(url):
+    return RapidStore(url)
+
+
+def show_storage_error(exc):
+    if isinstance(exc, (StorageConflict, ValueError, PermissionError, StorageConfigurationError)):
+        st.error(str(exc))
+    else:
+        st.error("The database could not complete this operation. Your draft is still in this session. Check the connection and retry; no successful save has been confirmed.")
+
+
+try:
+    if not database_url:
+        st.error("Permanent storage is not configured. Add RAPID_DATABASE_URL in Streamlit Secrets, then reload. See STORAGE_SETUP.md for the setup steps.")
+        st.stop()
+    database = get_database(database_url)
+    sync_machine_today()
+    database.initialize(configuration_payload(st.session_state), operations_payload(st.session_state))
+    workspace = Workspace(database, st.session_state, st.session_state.get("username", ""), role)
+    if not st.session_state.get("_storage_loaded"):
+        workspace.reload()
+    settings = st.session_state.settings
+    widget_epoch = st.session_state.get("_widget_epoch", 0)
+except Exception as exc:
+    show_storage_error(exc)
+    st.stop()
+
+
+def show_saved_records():
+    with st.expander("Saved daily records & data backup"):
+        try:
+            dates = database.daily_dates()
+            if dates:
+                selected_date = st.selectbox("Saved production date", dates, key="saved_record_date")
+                saved = database.daily_record(selected_date)
+                st.caption("Read-only record: inputs, reference settings and outputs exactly as saved. Earlier records are never recalculated using today's settings.")
+                st.dataframe(payload_frame(saved["inputs"]["orders"]), use_container_width=True, hide_index=True)
+                st.dataframe(payload_frame(saved["artifacts"]["results"]), use_container_width=True, hide_index=True)
+                st.download_button("Download saved daily record", json.dumps(saved, ensure_ascii=False, indent=2),
+                    f"RAPID_Daily_Record_{selected_date}.json", "application/json")
+            else:
+                st.info("Save a replan to create the first daily record.")
+            st.download_button("Download complete data backup", json.dumps(database.export_records(), ensure_ascii=False, indent=2),
+                "RAPID_Data_Backup.json", "application/json")
+        except Exception as exc:
+            show_storage_error(exc)
+
+
 # -----------------------------------------------------------------------------
 # Sidebar
 # -----------------------------------------------------------------------------
@@ -1107,7 +1083,7 @@ with st.sidebar:
     selected = st.radio("Navigation", nav_labels, label_visibility="collapsed")
     page = "Admin Settings" if "Admin Settings" in selected else ("Reports" if "Reports" in selected else "Dashboard")
     st.divider()
-    st.markdown("<div class='sidebar-status'><div class='sidebar-status-title'>SYSTEM STATUS</div><div class='status-green'><span class='status-dot'></span>Planning workspace ready</div><div style='font-size:9px;opacity:.65;margin-top:8px'>Prototype session active</div></div>", unsafe_allow_html=True)
+    st.markdown("<div class='sidebar-status'><div class='sidebar-status-title'>SYSTEM STATUS</div><div class='status-green'><span class='status-dot'></span>Planning workspace ready</div><div style='font-size:9px;opacity:.65;margin-top:8px'>Draft workspace active</div></div>", unsafe_allow_html=True)
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
     st.markdown("<div class='signed-label'>SIGNED IN AS</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='signed-user'>{st.session_state.get('username','planner')} · {role}</div>", unsafe_allow_html=True)
@@ -1116,6 +1092,16 @@ with st.sidebar:
         logout()
     st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
     st.caption("RAPID · Ocean & Sand")
+    st.caption("Local database" if database.is_local else "Shared PostgreSQL database")
+    if database.is_local:
+        st.caption("Local records survive app restarts on this computer. Configure PostgreSQL for Streamlit Cloud.")
+    st.caption("Reload to see another user's saved changes. Unsaved edits remain a draft.")
+    if st.button("Reload saved data (discard draft)", use_container_width=True):
+        try:
+            workspace.reload()
+            st.rerun()
+        except Exception as exc:
+            show_storage_error(exc)
     st.caption("Explainable AI + Rolling Operations Planning")
 
 # -----------------------------------------------------------------------------
@@ -1127,7 +1113,7 @@ if page == "Admin Settings":
     with c1:
         with st.container(border=True):
             ui_section("Factory Reference Settings", "⚙")
-            settings["company_name"] = st.text_input("Company / model label", settings["company_name"])
+            settings["company_name"] = st.text_input("Company / model label", settings["company_name"], key=f"company_label_{widget_epoch}")
             settings["benchmark_workers"] = st.number_input(
                 "Standard Production Workforce",
                 min_value=1,
@@ -1135,6 +1121,7 @@ if page == "Admin Settings":
                 value=int(settings["benchmark_workers"]),
                 step=1,
                 help="Reference production workforce. Planner enters actual attendance separately each day.",
+                key=f"standard_workers_{widget_epoch}",
             )
             settings["base_capacity"] = st.number_input(
                 "Standard Production Capacity (uppers/day)",
@@ -1143,6 +1130,7 @@ if page == "Admin Settings":
                 value=float(settings["base_capacity"]),
                 step=10.0,
                 help="Editable production-capacity benchmark. Replace with verified observed company capacity when available.",
+                key=f"standard_capacity_{widget_epoch}",
             )
             settings["max_overtime"] = st.slider(
                 "Maximum Overtime Capacity",
@@ -1150,6 +1138,7 @@ if page == "Admin Settings":
                 max_value=0.30,
                 value=float(settings["max_overtime"]),
                 step=0.01,
+                key=f"overtime_limit_{widget_epoch}",
             )
             st.caption("Reference values are prototype assumptions until verified with company records.")
     with c2:
@@ -1181,7 +1170,7 @@ if page == "Admin Settings":
                 "Machine Type": st.column_config.TextColumn("Machine Type", required=True, width="large"),
                 "Total Machines": st.column_config.NumberColumn("Total Machines", min_value=0, step=1, required=True, width="small"),
             },
-            key="admin_machine_master_editor",
+            key=f"admin_machine_master_editor_{widget_epoch}",
         )
         st.session_state.machine_master = clean_machine_master(edited_master)
         sync_machine_today()
@@ -1189,6 +1178,15 @@ if page == "Admin Settings":
         mc1.metric("Production Processes", len(st.session_state.machine_master))
         mc2.metric("Total Machines", int(st.session_state.machine_master["Total Machines"].sum()))
         mc3.metric("Standard Workforce", int(settings["benchmark_workers"]))
+
+    if st.button("Save Admin Settings", type="primary", use_container_width=True):
+        try:
+            workspace.save_configuration()
+            st.success("Factory settings saved for all users. Planners can reload saved data to use them.")
+        except Exception as exc:
+            show_storage_error(exc)
+    if workspace.configuration_changed():
+        st.info("Admin settings have unsaved changes.")
 
     with st.expander("Explainable Decision Tree & Academic Model Note"):
         fig, ax = plt.subplots(figsize=(14, 7))
@@ -1212,6 +1210,12 @@ if page == "Reports":
     decision_df = management_decision_rows(results, prepared, resource_info.get("labour_availability", 0), machine_table) if not results.empty else pd.DataFrame()
     material_df = build_material_tracker(prepared)
     ui_header("Reports & Export", "Download the current rolling plan, machine status, material status and management-decision outputs.")
+    show_saved_records()
+    with st.expander("Production progress & action exports"):
+        progress_export = daily_progress(st.session_state.orders, st.session_state.get("production_notes", []), st.session_state.planning_date)
+        actions_export = action_frame(st.session_state.get("actions", []))
+        st.download_button("Daily Production Progress CSV", progress_export.to_csv(index=False).encode("utf-8"), "RAPID_Production_Progress.csv", "text/csv")
+        st.download_button("Corrective Actions CSV", actions_export.to_csv(index=False).encode("utf-8"), "RAPID_Corrective_Actions.csv", "text/csv")
     if results.empty:
         st.info("Add valid active orders on the Dashboard first.")
         st.stop()
@@ -1235,7 +1239,7 @@ if page == "Reports":
         with e1:
             st.download_button("Material Tracker CSV", material_df.to_csv(index=False).encode("utf-8"), "RAPID_Material_Tracker.csv", "text/csv", use_container_width=True)
         with e2:
-            history_df = pd.DataFrame(st.session_state.plan_history)
+            history_df = pd.DataFrame(database.history())
             st.download_button("Replan History CSV", history_df.to_csv(index=False).encode("utf-8"), "RAPID_Replan_History.csv", "text/csv", use_container_width=True)
         with e3:
             amap, bottleneck_factor, bottleneck_process, total_m, avail_m, overall_m = machine_availability_map()
@@ -1264,10 +1268,17 @@ st.session_state.orders = normalize_orders(st.session_state.orders)
 
 # Daily controls above the full-width management sections.
 with st.container(border=True):
-    ui_section("Today's operating plan", "◴", "Update attendance and production inputs, then save a replan to the daily change history.")
+    ui_section("Today's operating plan", "◴", "Update today’s inputs, then save the replan for your team. New dates carry completed production forward and clear daily actuals.")
     c1, c2 = st.columns(2)
     with c1:
-        st.session_state.planning_date = st.date_input("Planning Date", value=st.session_state.planning_date)
+        requested_date = st.date_input("Planning Date", value=st.session_state.planning_date, key=f"planning_date_input_{widget_epoch}")
+        if requested_date != st.session_state.planning_date:
+            try:
+                workspace.switch_date(requested_date)
+                st.rerun()
+            except Exception as exc:
+                show_storage_error(exc)
+                st.stop()
     with c2:
         max_workers_input = max(500, int(settings["benchmark_workers"]) * 2)
         st.session_state.workers_present = st.number_input(
@@ -1276,15 +1287,28 @@ with st.container(border=True):
             max_value=max_workers_input,
             value=int(st.session_state.workers_present),
             step=1,
-            help="Actual production attendance for today.",
+            help="Actual production attendance for today. Confirm attendance on every new date.",
+            key=f"workers_present_input_{widget_epoch}",
+            disabled=st.session_state.get("_historical", False),
         )
     operating_summary = st.empty()
-    replan_clicked = st.button("▶  REPLAN TODAY", type="primary", use_container_width=True)
-    st.caption("Edits update the live forecast. REPLAN TODAY saves a snapshot for comparison.")
+    replan_clicked = st.button("▶  REPLAN TODAY", type="primary", use_container_width=True, disabled=st.session_state.get("_historical", False))
+    st.caption("Edits update your draft forecast. REPLAN TODAY saves inputs, daily actuals and the full plan to the database.")
+
+if st.session_state.get("_historical"):
+    with dashboard_header.container():
+        ui_header("Saved production record", "Read-only history. Select the latest date to continue planning.")
+    saved_day = database.daily_record(str(st.session_state.planning_date))
+    st.info("This is a saved historical record. It cannot overwrite current production totals.")
+    st.dataframe(payload_frame(saved_day["inputs"]["orders"]), use_container_width=True, hide_index=True)
+    st.dataframe(payload_frame(saved_day["artifacts"]["results"]), use_container_width=True, hide_index=True)
+    render_production_management(st.session_state, read_only=True, key_suffix=str(widget_epoch))
+    show_saved_records()
+    st.stop()
 
 # Detailed operational inputs are intentionally collapsed so the dashboard stays management-first.
 with st.expander("✎  Update today's orders, production, materials & machine status", expanded=False):
-    order_tab, machine_tab = st.tabs(["Orders · Production · Materials", "Machine Availability / Breakdown"])
+    order_tab, machine_tab, progress_tab = st.tabs(["Orders · Production · Materials", "Machine Availability / Breakdown", "Targets · Losses · Actions"])
     with order_tab:
         st.caption("Enter daily production progress, actual workers used, material readiness and each order's current production process. Remaining quantity is calculated automatically.")
         edited_orders = st.data_editor(
@@ -1303,7 +1327,7 @@ with st.expander("✎  Update today's orders, production, materials & machine st
                 "Expected Material Ready Date": st.column_config.DateColumn("Expected Material Ready", width="small"),
                 "Current Process": st.column_config.SelectboxColumn("Current Production Process", options=process_options(), required=True, width="medium"),
             },
-            key="active_orders_editor",
+            key=f"active_orders_editor_{widget_epoch}",
         )
         st.session_state.orders = normalize_orders(edited_orders)
         remaining_view = st.session_state.orders[["Order", "Original Quantity", "Completed Before Today", "Actual Production Today"]].copy()
@@ -1326,7 +1350,7 @@ with st.expander("✎  Update today's orders, production, materials & machine st
                 "Available Today": st.column_config.NumberColumn("Available Today", min_value=0, step=1, width="small"),
                 "Breakdown / Issue": st.column_config.TextColumn("Breakdown / Maintenance / Issue", width="large"),
             },
-            key="machine_today_editor",
+            key=f"machine_today_editor_{widget_epoch}",
         )
         for idx in edited_mt.index:
             total = int(edited_mt.at[idx, "Total Machines"])
@@ -1337,6 +1361,10 @@ with st.expander("✎  Update today's orders, production, materials & machine st
         preview_machine = machine_status_table()
         st.dataframe(preview_machine[["Process", "Total Machines", "Available Today", "Breakdown / Unavailable", "Availability %", "Status", "Breakdown / Issue"]], use_container_width=True, hide_index=True, height=285)
         st.caption("Availability is not the same as true utilization. True utilization requires process run-hours/cycle-time data.")
+
+    with progress_tab:
+        if render_production_management(st.session_state, key_suffix=str(widget_epoch)):
+            st.rerun()
 
 with dashboard_header.container():
     ui_header("Production Decision Dashboard", "AI/ML-driven planning, resource allocation, process bottleneck visibility & delivery-risk analysis")
@@ -1352,15 +1380,27 @@ operating_summary.markdown(
     unsafe_allow_html=True,
 )
 
-if results.empty:
-    st.info("Enter at least one active order with remaining quantity to generate the management dashboard.")
-    st.stop()
-
 if replan_clicked:
-    snap = current_snapshot(results, prepared, machine_table)
-    st.session_state.plan_history.append(snap)
-    st.session_state.plan_history = st.session_state.plan_history[-90:]
-    st.toast("RAPID analysed today's conditions and updated the rolling plan.")
+    try:
+        snap = current_snapshot(results, prepared, machine_table)
+        workspace.save_plan(snap, {
+            "results": frame_payload(results), "daily": frame_payload(daily),
+            "predictions": frame_payload(pred_df), "recommendations": frame_payload(recommendations),
+            "overtime": float(overtime), "resource_info": resource_info,
+        })
+        st.success("Plan and daily production records saved for the team.")
+    except Exception as exc:
+        show_storage_error(exc)
+
+if workspace.operations_changed() or str(st.session_state.planning_date) > st.session_state["_latest_date"]:
+    st.info("Draft changes are not saved yet. Use REPLAN TODAY to save them for all users.")
+else:
+    st.caption(f"Saved plan revision {st.session_state['_ops_revision']} · {st.session_state['_saved_at'][:19].replace('T', ' ')} UTC")
+
+if results.empty:
+    st.info("No active quantity remains. You can still save today's actuals and review saved records.")
+    show_saved_records()
+    st.stop()
 
 missing_ready = [o["order"] for o in prepared if o["material_status"] in BLOCKED_MATERIAL_STATUSES and pd.isna(o.get("expected_material_ready"))]
 if missing_ready:
@@ -1400,6 +1440,15 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# Production progress complements the forecast; targets are explicit daily commitments.
+with st.container(border=True):
+    ui_section("Daily progress & follow-up", "↗", "Record targets, reasons and action owners in the Targets · Losses · Actions input tab.")
+    progress = daily_progress(st.session_state.orders, st.session_state.get("production_notes", []), st.session_state.planning_date)
+    followups = action_summary(st.session_state.get("actions", []), st.session_state.planning_date)
+    st.markdown(f"**{followups['open']} open actions** · {followups['overdue']} overdue · {followups['follow_up_due']} follow-ups due")
+    st.dataframe(progress[["Order", "Daily Target", "Good Output Today", "Target Remaining", "Target Reached (%)", "Progress", "Recorded Reason"]], use_container_width=True, hide_index=True)
+    st.caption("Daily targets are entered by the supervisor. A remaining target is not a delivery-delay prediction; recorded reasons are observations.")
+
 # Risk + allocation
 with st.container(border=True):
     ui_section("AI/ML Delivery-Risk Assessment", "◈")
@@ -1416,6 +1465,37 @@ with st.container(border=True):
     with st.expander("View process-wise worker allocation"):
         st.dataframe(build_process_allocation(results), use_container_width=True, hide_index=True)
         st.caption("Workers are assigned to the planner-selected current production process; the prototype does not falsely allocate the same worker across multiple stages simultaneously.")
+
+with st.expander("Explain an order · evidence and recommended action"):
+    explain_order = st.selectbox("Order to explain", [o["order"] for o in prepared])
+    evidence = next(o for o in prepared if o["order"] == explain_order)
+    outcome = results.loc[results["order"] == explain_order].iloc[0]
+    advice = recommendations.loc[recommendations["order"] == explain_order].iloc[0]
+    st.write(f"Remaining quantity: {evidence['quantity']:,}. Recommended workers today: {int(outcome['day1_workers'])}. Current process: {evidence['current_process']}.")
+    st.write(f"Machine availability: {evidence['machine_availability']:.0%}. Material status: {evidence['material_status']}. Delivery assessment: {advice['status']}.")
+    st.markdown("**Recorded constraints and operational indicators**")
+    st.write(advice["reason"])
+    st.markdown("**Recommended action**")
+    st.write(advice["recommended_action"])
+    st.caption("Allocation uses material readiness, usable process capacity, due-date priority and ML risk. Shared workforce is limited to the configured attendance basis. Test changes in What-if Impact Analysis before committing them.")
+    feature_values = pd.DataFrame([{
+        "quantity": float(evidence["quantity"]), "days_remaining": evidence["days_remaining"],
+        "machine_availability": evidence["machine_availability"], "labour_availability": labour_factor,
+        "material_delay_days": evidence["ml_material_delay_days"], "base_capacity": float(settings["base_capacity"]),
+        "required_daily_output": evidence["required_daily_output"], "capacity_ratio": evidence["capacity_ratio"],
+    }], columns=FEATURES)
+    decision_nodes = MODEL.decision_path(feature_values).indices
+    tree_evidence = []
+    for node in decision_nodes:
+        feature_index = int(MODEL.tree_.feature[node])
+        if feature_index >= 0:
+            observed = float(feature_values.iloc[0, feature_index])
+            threshold = float(MODEL.tree_.threshold[node])
+            tree_evidence.append({"Model input": FEATURES[feature_index], "Observed value": observed,
+                "Condition followed": "≤" if observed <= threshold else ">", "Tree threshold": threshold})
+    st.markdown("**Actual ML decision path**")
+    st.dataframe(pd.DataFrame(tree_evidence), use_container_width=True, hide_index=True)
+    st.caption("These are the classifier's actual tests for this order. The model uses simulated training scenarios; the decision path explains its prediction, not a proven factory root cause. This is plan guidance, not a generative chatbot.")
 
 # Machine and material visibility
 with st.container(border=True):
@@ -1530,6 +1610,6 @@ with st.expander("Management detail · order reasons · process allocation · fu
     st.dataframe(daily, use_container_width=True, hide_index=True, height=360)
 
 st.markdown(
-    "<div class='academic-note'><b>RAPID</b> — Resource Allocation & Production Intelligence for Delivery · MBA decision-support prototype. Academic disclosure: ML training scenarios are researcher-designed/simulated; default workforce, machine counts and capacity values are prototype/reference assumptions unless verified with company records. Session-state history is prototype persistence and may reset when the Streamlit app session/cloud instance restarts.</div>",
+    "<div class='academic-note'><b>RAPID</b> — Resource Allocation & Production Intelligence for Delivery · MBA decision-support prototype. Academic disclosure: ML training scenarios are researcher-designed/simulated; default workforce, machine counts and capacity values are prototype/reference assumptions unless verified with company records. Saved records are stored in the configured database; edits remain drafts until saved. Local SQLite is for local use; cloud persistence requires PostgreSQL.</div>",
     unsafe_allow_html=True,
 )
