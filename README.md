@@ -2,6 +2,10 @@
 
 RAPID is a rolling daily production planning and decision-support tool for concurrent make-to-order shoe-upper production. It combines explainable planning calculations with a shared daily operating record so planners and managers can work from the same saved plan.
 
+### Run without a database
+
+No secrets or database are required for session-only mode. Leave `RAPID_DATABASE_URL` unset and launch `app.py`. Demo logins are Admin `admin` / `admin2026` and Planner `planner` / `user2026`; optional login secrets can replace these. All charts, planning, daily entries, actions and exports work. Saved plans and settings belong only to the current browser session and can be lost after refresh, sign-out or restart. Download reports before leaving. Separate users do not share session records.
+
 ## Main capabilities
 
 - Professional single-column Ocean Blue and Warm Sand dashboard with responsive full-width tables and charts.
@@ -44,7 +48,7 @@ The local SQLite file survives app restarts on the same computer. It is intended
 
 Use PostgreSQL for a deployed factory workspace. Create the database, add the database URL and explicit Admin/Planner credentials to the deployment's private Streamlit Secrets, then deploy the repository. RAPID creates its tables on first connection and uses optimistic revision checks so one user's save cannot silently overwrite another user's newer save.
 
-Follow [STORAGE_SETUP.md](STORAGE_SETUP.md) for the provider-neutral setup, required secret names, first-save verification, daily workflow, conflict handling and backup guidance. The app intentionally stops with a clear setup message when a deployed instance has no database URL; it does not pretend that session memory is a reliable production record.
+Follow [STORAGE_SETUP.md](STORAGE_SETUP.md) if permanent shared records are wanted later. Without a database URL, RAPID runs in temporary session-only mode and labels that limitation in the sidebar.
 
 For Streamlit Community Cloud, configure secrets in the app's Settings rather than committing them to GitHub. Keep `.streamlit/secrets.toml` private; only the placeholder example belongs in the repository.
 

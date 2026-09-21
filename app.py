@@ -13,6 +13,7 @@ import matplotlib.dates as mdates
 
 from rapid_storage import RapidStore, StorageConflict, StorageConfigurationError, configuration_payload, operations_payload, frame_payload, payload_frame
 from rapid_workspace import Workspace
+from rapid_session import SessionStore
 from production_management import render_production_management, daily_progress, action_frame, action_summary
 
 from planner_core import (
@@ -148,6 +149,7 @@ def login_page():
 
 
 database_url = os.environ.get("RAPID_DATABASE_URL") or get_secret("RAPID_DATABASE_URL", None)
+session_only = not database_url
 if database_url and not database_url.startswith("sqlite:"):
     if not all(get_secret(key, None) for key in ("ADMIN_USERNAME", "ADMIN_PASSWORD", "USER_USERNAME", "USER_PASSWORD")):
         st.error("Configure Admin and Planner login credentials in Streamlit Secrets before using the shared database.")
@@ -1239,10 +1241,12 @@ def show_storage_error(exc):
 
 
 try:
-    if not database_url:
-        st.error("Permanent storage is not configured. Add RAPID_DATABASE_URL in Streamlit Secrets, then reload. See STORAGE_SETUP.md for the setup steps.")
-        st.stop()
-    database = get_database(database_url)
+    if session_only:
+        if "_session_store" not in st.session_state:
+            st.session_state._session_store = SessionStore()
+        database = st.session_state._session_store
+    else:
+        database = get_database(database_url)
     sync_machine_today()
     database.initialize(configuration_payload(st.session_state), operations_payload(st.session_state))
     workspace = Workspace(database, st.session_state, st.session_state.get("username", ""), role)
@@ -1301,10 +1305,12 @@ with st.sidebar:
         logout()
     st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
     st.caption("RAPID · Ocean & Sand")
-    st.caption("Local database" if database.is_local else "Shared PostgreSQL database")
-    if database.is_local:
+    st.caption("Session-only mode · no database" if session_only else "Local database" if database.is_local else "Shared PostgreSQL database")
+    if session_only:
+        st.warning("Temporary session: records are not shared with other users and may be lost on refresh, sign-out or restart. Download reports before leaving.")
+    elif database.is_local:
         st.caption("Local records survive app restarts on this computer. Configure PostgreSQL for Streamlit Cloud.")
-    st.caption("Reload to see another user's saved changes. Unsaved edits remain a draft.")
+    st.caption("Reload restores this session's last saved plan." if session_only else "Reload to see another user's saved changes. Unsaved edits remain a draft.")
     if st.button("Reload saved data (discard draft)", use_container_width=True):
         try:
             workspace.reload()
@@ -1391,7 +1397,7 @@ if page == "Admin Settings":
     if st.button("Save Admin Settings", type="primary", use_container_width=True):
         try:
             workspace.save_configuration()
-            st.success("Factory settings saved for all users. Planners can reload saved data to use them.")
+            st.success("Factory settings saved for this session." if session_only else "Factory settings saved for all users. Planners can reload saved data to use them.")
         except Exception as exc:
             show_storage_error(exc)
     if workspace.configuration_changed():
@@ -1502,7 +1508,7 @@ with st.container(border=True):
         )
     operating_summary = st.empty()
     replan_clicked = st.button("▶  REPLAN TODAY", type="primary", use_container_width=True, disabled=st.session_state.get("_historical", False))
-    st.caption("Edits update your draft forecast. REPLAN TODAY saves inputs, daily actuals and the full plan to the database.")
+    st.caption("REPLAN TODAY records inputs and the plan in this temporary session. Download reports before leaving." if session_only else "Edits update your draft forecast. REPLAN TODAY saves inputs, daily actuals and the full plan to the database.")
 
 if st.session_state.get("_historical"):
     with dashboard_header.container():
@@ -1857,6 +1863,6 @@ with st.expander("Management detail · order reasons · process allocation · fu
     st.dataframe(daily, use_container_width=True, hide_index=True, height=360)
 
 st.markdown(
-    "<div class='academic-note'><b>RAPID</b> — Resource Allocation & Production Intelligence for Delivery · MBA decision-support prototype. Academic disclosure: ML training scenarios are researcher-designed/simulated; default workforce, machine counts and capacity values are prototype/reference assumptions unless verified with company records. Saved records are stored in the configured database; edits remain drafts until saved. Local SQLite is for local use; cloud persistence requires PostgreSQL.</div>",
+    "<div class='academic-note'><b>RAPID</b> — Resource Allocation & Production Intelligence for Delivery · MBA decision-support prototype. ML training scenarios are simulated; reference values need factory verification. Without a database connection, saved plans exist only in the current temporary session. Download reports before leaving.</div>",
     unsafe_allow_html=True,
 )
