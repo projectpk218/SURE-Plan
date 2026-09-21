@@ -4,6 +4,7 @@ import copy
 import math
 import os
 import json
+import textwrap
 import pandas as pd
 import streamlit as st
 from sklearn.tree import DecisionTreeClassifier, plot_tree
@@ -789,7 +790,7 @@ def _chart_axes(figsize=(10, 3.4)):
     ax.spines[["top", "right"]].set_visible(False)
     ax.spines["left"].set_color(CHART_GRID)
     ax.spines["bottom"].set_color(CHART_GRID)
-    ax.tick_params(colors=CHART_MUTED, labelsize=9)
+    ax.tick_params(colors=CHART_MUTED, labelsize=11)
     ax.xaxis.label.set_color(CHART_MUTED)
     ax.yaxis.label.set_color(CHART_MUTED)
     ax.grid(axis="x", color=CHART_GRID, alpha=.55, linewidth=.8)
@@ -800,8 +801,6 @@ def _chart_axes(figsize=(10, 3.4)):
 def _add_bar_labels(ax, bars, fmt="{:.0f}"):
     for bar in bars:
         value = bar.get_width()
-        if value <= 0:
-            continue
         ax.text(
             value,
             bar.get_y() + bar.get_height() / 2,
@@ -809,8 +808,9 @@ def _add_bar_labels(ax, bars, fmt="{:.0f}"):
             va="center",
             ha="left",
             color=CHART_INK,
-            fontsize=8,
+            fontsize=11,
         )
+    ax.set_xlim(left=0, right=max(1, ax.get_xlim()[1] * 1.18))
 
 
 @st.cache_data(show_spinner=False)
@@ -841,17 +841,14 @@ def plot_daily_progress_chart(progress):
 def plot_risk_chart(risk_display):
     if risk_display.empty:
         return None
-    chart = risk_display.copy()
-    chart["Capacity Ratio"] = pd.to_numeric(chart["Capacity Ratio"], errors="coerce").fillna(0)
-    chart = chart.sort_values("Capacity Ratio", ascending=True)
-    colours = [CHART_RED if str(v).upper() == "HIGH" else CHART_AMBER if str(v).upper() == "MEDIUM" else CHART_GREEN for v in chart["ML Delivery Risk"]]
-    fig, ax = _chart_axes((10, max(2.8, .42 * len(chart) + 1.2)))
-    bars = ax.barh(chart["Order"].astype(str), chart["Capacity Ratio"], color=colours, alpha=.9)
-    ax.axvline(1.0, color=CHART_INK, linestyle="--", linewidth=1.2, label="Capacity fully used")
-    ax.set_xlabel("Capacity ratio (1.0 = full capacity)")
-    ax.set_title("Capacity pressure behind delivery risk", loc="left", color=CHART_INK, fontsize=11, fontweight="bold")
-    ax.legend(loc="lower right", frameon=False, fontsize=8)
-    _add_bar_labels(ax, bars, "{:.2f}")
+    counts = risk_display["ML Delivery Risk"].astype(str).str.upper().value_counts().reindex(["HIGH", "MEDIUM", "LOW"], fill_value=0)
+    fig, ax = _chart_axes((9, 3))
+    bars = ax.barh(counts.index, counts.values, color=[CHART_RED, CHART_AMBER, CHART_GREEN], height=.55)
+    ax.invert_yaxis()
+    ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    ax.set_xlabel("Number of active orders")
+    ax.set_title("How many orders need attention?", loc="left", color=CHART_INK, fontsize=13, pad=18)
+    _add_bar_labels(ax, bars)
     fig.tight_layout()
     return fig
 
@@ -864,12 +861,12 @@ def plot_resource_chart(alloc):
     chart["Recommended Workers Today"] = pd.to_numeric(chart["Recommended Workers Today"], errors="coerce").fillna(0)
     chart["Projected Delay (Days)"] = pd.to_numeric(chart["Projected Delay (Days)"], errors="coerce").fillna(0)
     chart = chart.sort_values("Recommended Workers Today", ascending=True)
-    colours = [CHART_GREEN if int(v) <= 0 else CHART_RED for v in chart["Projected Delay (Days)"].fillna(0)]
+    colours = [CHART_GREEN if str(v) == "YES" else CHART_RED for v in chart["On Time?"]]
     fig, ax = _chart_axes((10, max(2.8, .42 * len(chart) + 1.2)))
-    bars = ax.barh(chart["Order"].astype(str), chart["Recommended Workers Today"], color=colours)
+    labels = [f"{r['Order']} · {'On time' if r['On Time?'] == 'YES' else 'Late / unfinished'}" for _, r in chart.iterrows()]
+    bars = ax.barh(labels, chart["Recommended Workers Today"], color=colours)
     ax.set_xlabel("Workers recommended today")
     ax.set_title("Recommended workforce by order", loc="left", color=CHART_INK, fontsize=11, fontweight="bold")
-    ax.text(.01, 1.02, "Green = on time · red = projected delay", transform=ax.transAxes, color=CHART_MUTED, fontsize=8)
     _add_bar_labels(ax, bars)
     fig.tight_layout()
     return fig
@@ -884,11 +881,16 @@ def plot_machine_chart(machine_display):
     available = pd.to_numeric(chart["Available Today"], errors="coerce").fillna(0)
     unavailable = (total - available).clip(lower=0)
     fig, ax = _chart_axes((10, max(3.2, .34 * len(chart) + 1.4)))
-    ax.barh(chart["Process"].astype(str), available, color=CHART_OCEAN, label="Available")
-    ax.barh(chart["Process"].astype(str), unavailable, left=available, color=CHART_RED, alpha=.82, label="Unavailable")
+    labels = chart["Process"].astype(str).map(lambda value: textwrap.fill(value, 25))
+    ax.barh(labels, available, color=CHART_OCEAN, label="Available")
+    ax.barh(labels, unavailable, left=available, color=CHART_RED, alpha=.82, label="Unavailable")
+    for i, (a, t) in enumerate(zip(available, total)):
+        ax.text(t + .3, i, f"{a:g}/{t:g} available", va="center", fontsize=10, color=CHART_INK)
+    ax.set_xlim(0, max(1, total.max()) * 1.45)
+    fig.set_size_inches(10, max(4, .65 * len(chart) + 1.6))
     ax.set_xlabel("Machines")
     ax.set_title("Available versus unavailable machines by process", loc="left", color=CHART_INK, fontsize=11, fontweight="bold")
-    ax.legend(loc="lower right", frameon=False, fontsize=8)
+    ax.legend(loc="upper center", bbox_to_anchor=(.5, -.1), ncol=2, frameon=False, fontsize=10)
     fig.tight_layout()
     return fig
 
@@ -901,12 +903,11 @@ def plot_material_chart(material_df):
     if counts.empty:
         return None
     colours = [CHART_GREEN if s == "Ready" else CHART_AMBER if s == "Partially Ready" else CHART_RED for s in counts.index]
-    fig, ax = plt.subplots(figsize=(5.2, 3.1))
-    fig.patch.set_facecolor(CHART_PANEL)
-    ax.set_facecolor(CHART_PANEL)
-    wedges, _, _ = ax.pie(counts.values, startangle=90, counterclock=False, colors=colours, wedgeprops={"width": .42, "edgecolor": CHART_PANEL}, autopct=lambda p: f"{p:.0f}%" if p > 0 else "")
-    ax.text(0, 0, f"{len(material_df)}\norders", ha="center", va="center", color=CHART_INK, fontsize=11, fontweight="bold")
-    ax.legend(wedges, [f"{label}: {value}" for label, value in counts.items()], loc="lower center", bbox_to_anchor=(.5, -.08), ncol=2, frameon=False, fontsize=8)
+    fig, ax = _chart_axes((9, max(2.4, .65 * len(counts) + 1.4)))
+    bars = ax.barh([textwrap.fill(s, 28) for s in counts.index], counts.values, color=colours, height=.55)
+    _add_bar_labels(ax, bars)
+    ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    ax.set_xlabel("Number of active orders (each order counted once)")
     ax.set_title("Material readiness mix", loc="left", color=CHART_INK, fontsize=11, fontweight="bold")
     fig.tight_layout()
     return fig
@@ -916,18 +917,18 @@ def plot_material_chart(material_df):
 def plot_change_chart(change_df):
     if change_df.empty:
         return None
-    chart = change_df.copy()
-    chart["Change Value"] = pd.to_numeric(chart["Change"].astype(str).str.replace("—", "0", regex=False).str.replace("+", "", regex=False), errors="coerce").fillna(0)
-    chart = chart.sort_values("Change Value", ascending=True)
-    colours = [CHART_GREEN if value < 0 else CHART_RED if value > 0 else CHART_MUTED for value in chart["Change Value"]]
-    fig, ax = _chart_axes((10, max(3.0, .38 * len(chart) + 1.4)))
-    bars = ax.barh(chart["Indicator"].astype(str), chart["Change Value"], color=colours)
-    ax.axvline(0, color=CHART_INK, linewidth=1)
-    ax.set_xlabel("Change from previous saved plan")
-    ax.set_title("What changed since the previous plan", loc="left", color=CHART_INK, fontsize=11, fontweight="bold")
-    for bar, value in zip(bars, chart["Change Value"]):
-        if value:
-            ax.text(value, bar.get_y() + bar.get_height() / 2, f" {value:+.0f}", va="center", ha="left" if value > 0 else "right", color=CHART_INK, fontsize=8)
+    fig, axes = plt.subplots(len(change_df), 1, figsize=(9, 1.5 * len(change_df)), squeeze=False)
+    fig.patch.set_facecolor(CHART_PANEL)
+    units = {"Workers Present": "workers", "Machines Available": "machines", "Machine Constraints": "processes", "Material Constraints": "orders", "HIGH-risk Orders": "orders", "Projected Late Orders": "orders", "Projected Delay (Days)": "working days"}
+    for ax, (_, row) in zip(axes.flat, change_df.iterrows()):
+        p, c = float(row["Previous Plan"]), float(row["Today"])
+        ax.set_facecolor(CHART_PANEL)
+        bars = ax.barh(["Previous", "Current"], [p, c], color=[CHART_SAND, CHART_OCEAN], height=.55)
+        ax.invert_yaxis()
+        _add_bar_labels(ax, bars)
+        ax.set_title(f"{row['Indicator']} ({units.get(row['Indicator'], 'count')}) · change {c-p:+g}", loc="left", fontsize=11, color=CHART_INK)
+        ax.spines[["top", "right", "bottom"]].set_visible(False)
+        ax.tick_params(axis="x", bottom=False, labelbottom=False)
     fig.tight_layout()
     return fig
 
@@ -949,36 +950,71 @@ def plot_decision_chart(decision_df):
     return fig
 
 
-def plot_daily_workforce(daily, history):
-    """Readable current-day planned versus actual worker allocation by order."""
+def plot_daily_workforce(daily, history, selected_date=None):
+    """Exact selected-date allocation; missing actuals stay missing."""
     if daily.empty:
         return None
-    planning_date = pd.Timestamp(st.session_state.planning_date)
-    current = daily[pd.to_datetime(daily["production_date"]) == planning_date].copy()
+    planning_date = pd.Timestamp(selected_date if selected_date is not None else st.session_state.planning_date).normalize()
+    current = daily[pd.to_datetime(daily["production_date"]).dt.normalize() == planning_date].copy()
     if current.empty:
-        current = daily.sort_values("production_date").groupby("order", as_index=False).first()
-    planned = current.groupby("order", as_index=False)["workers_allocated"].sum().rename(columns={"workers_allocated": "Planned"})
+        return None
+    all_dates = sorted(pd.to_datetime(daily["production_date"]).dt.normalize().unique())
+    window = [d for d in all_dates if d >= planning_date][:7]
+    schedule = daily.assign(chart_date=pd.to_datetime(daily["production_date"]).dt.normalize())
+    grid = schedule[schedule.chart_date.isin(window)].pivot_table(index="order", columns="chart_date", values="workers_allocated", aggfunc="sum").reindex(columns=window)
     actual = {}
     for snapshot in reversed(history):
-        if str(snapshot.get("planning_date", "")) == str(st.session_state.planning_date):
+        if pd.Timestamp(snapshot.get("planning_date")) == planning_date:
             actual = snapshot.get("actual_workers", {}) or {}
             break
-    planned["Actual"] = planned["order"].map(lambda order: float(actual.get(str(order), 0)))
-    planned = planned.sort_values("Planned", ascending=True)
-    fig, ax = _chart_axes((10, max(3.0, .46 * len(planned) + 1.4)))
-    y = list(range(len(planned)))
-    planned_bars = ax.barh([i - .18 for i in y], planned["Planned"], height=.32, color=CHART_OCEAN, label="Planned")
-    actual_bars = ax.barh([i + .18 for i in y], planned["Actual"], height=.32, color=CHART_SAND, label="Actual entered")
-    ax.set_yticks(y, planned["order"].astype(str))
-    ax.set_xlabel("Workers")
-    ax.set_title("Today’s workers by order", loc="left", color=CHART_INK, fontsize=11, fontweight="bold")
-    ax.legend(loc="lower right", frameon=False, fontsize=8)
-    _add_bar_labels(ax, planned_bars)
-    if planned["Actual"].sum() > 0:
-        _add_bar_labels(ax, actual_bars)
-    else:
-        ax.text(.01, 1.02, "Actual worker use has not been entered for this date", transform=ax.transAxes, color=CHART_MUTED, fontsize=8)
+    fig, ax = plt.subplots(figsize=(10, max(3.2, .65 * len(grid) + 1.8)))
+    fig.patch.set_facecolor(CHART_PANEL)
+    ax.set_facecolor(CHART_PANEL)
+    maximum = max(1, grid.max().max())
+    ax.imshow(grid.to_numpy(dtype=float), cmap="GnBu", vmin=0, vmax=maximum, aspect="auto")
+    ax.set_xticks(range(len(window)), [pd.Timestamp(d).strftime("%a\n%d %b") for d in window], fontsize=11)
+    labels = []
+    for name in grid.index:
+        recorded = actual.get(str(name))
+        labels.append(f"{name}\nActual {planning_date:%d %b}: {recorded if recorded is not None else 'Not recorded'}")
+    ax.set_yticks(range(len(grid)), labels, fontsize=10)
+    for i, row in enumerate(grid.to_numpy(dtype=float)):
+        for j, value in enumerate(row):
+            ax.text(j, i, "—" if pd.isna(value) else f"{value:g}", ha="center", va="center", fontsize=13, color="white" if pd.notna(value) and value > maximum * .6 else CHART_INK)
+    ax.set_title("Planned workers · next 7 production dates", loc="left", color=CHART_INK, fontsize=13, pad=18)
+    ax.set_xlabel("Production date · numbers are workers; darker cells mean more workers", labelpad=12)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
     fig.tight_layout()
+    return fig
+
+
+@st.cache_data(show_spinner=False)
+def plot_scenario_chart(scenarios):
+    if scenarios.empty:
+        return None
+    parts = scenarios["Orders On Time"].str.split("/", expand=True).astype(int)
+    on_time, late = parts[0], parts[1] - parts[0]
+    fig, axes = plt.subplots(2, 1, figsize=(10, max(6, len(scenarios) * .9 + 2)))
+    fig.patch.set_facecolor(CHART_PANEL)
+    labels = scenarios["Scenario"].map(lambda s: textwrap.fill(s, 27))
+    for ax in axes:
+        ax.set_facecolor(CHART_PANEL)
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.tick_params(labelsize=10)
+        ax.invert_yaxis()
+        ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    axes[0].barh(labels, on_time, color=CHART_GREEN, label="On time")
+    axes[0].barh(labels, late, left=on_time, color=CHART_RED, label="Late / unfinished")
+    for i, (n, total) in enumerate(zip(on_time, parts[1])):
+        axes[0].text(total + .05, i, f"{n}/{total} on time", va="center", fontsize=10)
+    axes[0].set_xlim(0, max(1, parts[1].max()) * 1.45)
+    axes[0].set_xlabel("Orders")
+    axes[0].legend(loc="upper center", bbox_to_anchor=(.5, 1.2), ncol=2, frameon=False)
+    bars = axes[1].barh(labels, scenarios["Projected Delay (Days)"], color=CHART_AMBER)
+    _add_bar_labels(axes[1], bars)
+    axes[1].set_xlabel("Total projected delay across orders (working days)")
+    fig.tight_layout(pad=2)
     return fig
 
 
@@ -1718,11 +1754,16 @@ with st.container(border=True):
 # Workforce allocation + Management Decision Centre
 with st.container(border=True):
     ui_section("Daily Workforce Allocation by Order", "⌁")
-    fig = plot_daily_workforce(daily, st.session_state.plan_history)
+    workforce_dates = sorted(pd.to_datetime(daily["production_date"]).dt.date.unique()) if not daily.empty else []
+    if workforce_dates:
+        workforce_date = st.selectbox("Production date to view", workforce_dates, format_func=lambda d: d.strftime("%a, %d %b %Y"))
+        fig = plot_daily_workforce(daily, st.session_state.plan_history, workforce_date)
+    else:
+        fig = None
     if fig is not None:
         st.pyplot(fig, use_container_width=True)
         plt.close(fig)
-    st.caption("Planned versus actual workers for today, grouped by order. Actual worker use appears after it is entered and saved in the daily inputs.")
+    st.caption("Read across an order to see its daily planned workers. Choose the first production date to view up to seven dates. Actuals beside each order are from the latest saved entry for the selected date. Not recorded means missing actuals; — means no schedule row. Future cells are forecasts.")
 with st.container(border=True):
     ui_section("Management Decision Centre", "★")
     decision_df = management_decision_rows(results, prepared, labour_factor, machine_table)
@@ -1746,6 +1787,11 @@ with st.container(border=True):
 with st.container(border=True):
     ui_section("What-if Impact Analysis", "⌁", "Hypothetical simulations only. Scenarios compare possible disruptions against today's Current Operating Plan and do not modify the active plan.")
     scenario_df, scenario_configs = evaluate_scenarios(bundle, machine_table)
+    scenario_chart = plot_scenario_chart(scenario_df)
+    if scenario_chart is not None:
+        st.pyplot(scenario_chart, use_container_width=True)
+        plt.close(scenario_chart)
+    st.caption("Each scenario uses the same active orders. Green shows projected on-time orders; red includes late or unfinished orders. Delay uses working days and is a planning estimate.")
     scenario_cards = scenario_df.head(6).to_dict("records")
     for sc in scenario_cards:
         impact_colour = "#20745B" if "STABLE" in sc["Impact"] else ("#946013" if "WATCH" in sc["Impact"] or "WARNING" in sc["Impact"] else "#AD3E40")
