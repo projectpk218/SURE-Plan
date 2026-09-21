@@ -815,7 +815,6 @@ def _add_bar_labels(ax, bars, fmt="{:.0f}"):
     ax.set_xlim(left=0, right=max(1, ax.get_xlim()[1] * 1.18))
 
 
-@st.cache_data(show_spinner=False)
 def plot_daily_progress_chart(progress):
     if progress.empty:
         return None
@@ -839,7 +838,6 @@ def plot_daily_progress_chart(progress):
     return fig
 
 
-@st.cache_data(show_spinner=False)
 def plot_risk_chart(risk_display):
     if risk_display.empty:
         return None
@@ -855,7 +853,6 @@ def plot_risk_chart(risk_display):
     return fig
 
 
-@st.cache_data(show_spinner=False)
 def plot_resource_chart(alloc):
     if alloc.empty:
         return None
@@ -874,7 +871,6 @@ def plot_resource_chart(alloc):
     return fig
 
 
-@st.cache_data(show_spinner=False)
 def plot_machine_chart(machine_display):
     if machine_display.empty:
         return None
@@ -897,7 +893,6 @@ def plot_machine_chart(machine_display):
     return fig
 
 
-@st.cache_data(show_spinner=False)
 def plot_material_chart(material_df):
     if material_df.empty or "Material Status" not in material_df:
         return None
@@ -915,7 +910,6 @@ def plot_material_chart(material_df):
     return fig
 
 
-@st.cache_data(show_spinner=False)
 def plot_change_chart(change_df):
     if change_df.empty:
         return None
@@ -935,7 +929,6 @@ def plot_change_chart(change_df):
     return fig
 
 
-@st.cache_data(show_spinner=False)
 def plot_decision_chart(decision_df):
     if decision_df.empty or "Priority" not in decision_df:
         return None
@@ -991,7 +984,6 @@ def plot_daily_workforce(daily, history, selected_date=None):
     return fig
 
 
-@st.cache_data(show_spinner=False)
 def plot_scenario_chart(scenarios):
     if scenarios.empty:
         return None
