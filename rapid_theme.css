@@ -19,13 +19,15 @@
     --shadow: 0 3px 14px rgba(16, 60, 74, .035);
 }
 
-html, body, [data-testid="stApp"] {
-    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+html, body, [data-testid="stApp"],
+[data-testid="stMarkdownContainer"], input, textarea, select, button,
+h1, h2, h3, h4 {
+    font-family: "Source Sans Pro", "Segoe UI", Arial, sans-serif;
 }
 
 .stApp { background: var(--sand); color: var(--text); }
 [data-testid="stHeader"] { background: rgba(244, 239, 230, .96); }
-.block-container { max-width: 1320px; padding: 2.3rem 2.25rem 3.5rem; }
+.block-container { max-width: 1240px; padding: 3.5rem 2rem 3rem; }
 h1, h2, h3, h4 { color: var(--ink); letter-spacing: -.025em; }
 h1 { line-height: 1.18; }
 p, li { line-height: 1.6; }
@@ -92,7 +94,7 @@ a { text-underline-offset: 3px; }
 }
 .dashboard-title-wrap { display: flex; gap: 12px; align-items: center; min-width: 0; }
 .menu-orb { display: none; }
-.dashboard-h1 { font-size: clamp(26px, 2.5vw, 34px); font-weight: 750; line-height: 1.2; color: var(--deep); letter-spacing: -.035em; }
+.dashboard-h1 { font-size: clamp(26px, 2.5vw, 32px); font-weight: 700; line-height: 1.25; color: var(--deep); letter-spacing: -.02em; }
 .dashboard-sub { font-size: 14px; line-height: 1.65; color: var(--muted); margin-top: 8px; max-width: 640px; }
 .header-right { display: flex; gap: 9px; flex-shrink: 0; flex-wrap: wrap; }
 .header-chip { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 10px 13px; box-shadow: var(--shadow); }
@@ -168,9 +170,9 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--focus); outline
 .kpi-red { --accent: var(--red); }
 .kpi-top { display: flex; align-items: center; gap: 8px; }
 .kpi-icon { color: var(--accent); font-size: 18px; flex-shrink: 0; }
-.kpi-label { font-size: 11.5px; line-height: 1.5; letter-spacing: .05em; font-weight: 700; color: var(--muted); }
+.kpi-label { font-size: 13px; line-height: 1.5; letter-spacing: .02em; font-weight: 600; color: var(--muted); }
 .kpi-value { font-size: 32px; font-weight: 750; color: var(--deep); margin: 12px 0 7px; line-height: 1.15; letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
-.kpi-sub { font-size: 12px; color: var(--muted); line-height: 1.55; }
+.kpi-sub { font-size: 14px; color: var(--muted); line-height: 1.5; }
 [data-testid="stMetricValue"] { color: var(--deep); font-variant-numeric: tabular-nums; }
 [data-testid="stMetricLabel"] { color: var(--muted); }
 .risk-low-text { color: var(--green); }
@@ -193,7 +195,7 @@ details[data-testid="stExpander"] summary { color: var(--deep); font-weight: 600
 [data-testid="stTabs"] [role="tab"] p { font-weight: 650; }
 [data-testid="stAlert"] { border-radius: 10px; }
 
-.scenario-card { display: grid; grid-template-columns: 2fr 1fr 1fr 2fr; gap: 16px; align-items: center; background: var(--panel); border-bottom: 1px solid var(--line); padding: 18px 4px; }
+.scenario-card { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(60px, .6fr) minmax(0, 2fr); gap: 20px; align-items: center; background: var(--panel); border-bottom: 1px solid var(--line); padding: 18px 12px; overflow-wrap: anywhere; }
 .scenario-name { font-size: 14px; font-weight: 700; color: var(--deep); }
 .scenario-impact { font-size: 12px; font-weight: 700; }
 .scenario-big { font-size: 23px; color: var(--deep); font-weight: 750; font-variant-numeric: tabular-nums; }
