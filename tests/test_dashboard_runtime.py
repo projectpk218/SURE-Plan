@@ -39,9 +39,9 @@ class DashboardRuntimeTests(unittest.TestCase):
 
     def test_replanning_attendance_and_all_change_indicators(self):
         app = self.login()
-        self.click(app, "REPLAN TODAY")
+        self.click(app, "Save today's plan")
         next(n for n in app.number_input if n.label == "Workers Present Today").set_value(110).run()
-        self.click(app, "REPLAN TODAY")
+        self.click(app, "Save today's plan")
         self.assertEqual(app.session_state.plan_history[-1]["workers_present"], 110)
         self.assertEqual(sum(app.session_state.plan_history[-1]["recommended_workers"].values()), 110)
         changes = next(d.value for d in app.dataframe if "Indicator" in d.value.columns)
@@ -74,7 +74,7 @@ class DashboardRuntimeTests(unittest.TestCase):
     def test_saved_plan_survives_signout_and_a_separate_planner_session(self):
         app = self.login()
         next(n for n in app.number_input if n.label == "Workers Present Today").set_value(117).run()
-        self.click(app, "REPLAN TODAY")
+        self.click(app, "Save today's plan")
         self.click(app, "SIGN OUT")
         reopened = self.login("planner")
         self.assertEqual(reopened.session_state.workers_present, 117)
@@ -84,9 +84,9 @@ class DashboardRuntimeTests(unittest.TestCase):
         first = self.login("planner")
         second = self.login("planner")
         next(n for n in first.number_input if n.label == "Workers Present Today").set_value(115).run()
-        self.click(first, "REPLAN TODAY")
+        self.click(first, "Save today's plan")
         next(n for n in second.number_input if n.label == "Workers Present Today").set_value(90).run()
-        self.click(second, "REPLAN TODAY")
+        self.click(second, "Save today's plan")
         self.assertTrue(any("Another user" in error.value for error in second.error))
         reopened = self.login("planner")
         self.assertEqual(reopened.session_state.workers_present, 115)

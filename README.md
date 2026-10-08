@@ -1,10 +1,20 @@
 # RAPID — Production Planning and Daily Operations Dashboard
 
+### Daily planner workflow
+
+1. In **Update today**, confirm the planning date and workers present.
+2. In **Record actual output**, select an order and enter its total good units completed today. Actual workers assigned are optional. Use **Order setup & constraints** only to add or change order details, materials, or machine availability.
+3. Review **Today's plan & progress**. RAPID proposes each day's target from its day-start production schedule, recommends workers, and calculates target left and target reached. A zero target means no output is scheduled for that order on the selected date. The target is rounded down to whole units and cannot exceed the order balance at the start of the day.
+4. Use **Save today's plan** to accept the proposed targets and record the plan. Accepted targets stay fixed if actual output or later forecasts change. If necessary, adjust a target or record a shortfall reason in the follow-up section. Review **Actions to take** and assign an owner for corrective action.
+5. Open **Detailed analysis** for delivery risk, process allocation, machines, materials, change history, and the rolling workforce schedule. Reports and Admin Settings remain in the sidebar.
+
+Actual output reduces the remaining order quantity. A daily target is a tracking commitment; it does not directly change the planner's capacity or delivery calculation.
+
 RAPID is a rolling daily production planning and decision-support tool for concurrent make-to-order shoe-upper production. It combines explainable planning calculations with a shared daily operating record so planners and managers can work from the same saved plan.
 
 ### Run without a database
 
-No secrets or database are required for session-only mode. Leave `RAPID_DATABASE_URL` unset and launch `app.py`. Demo logins are Admin `admin` / `admin2026` and Planner `planner` / `user2026`; optional login secrets can replace these. All charts, planning, daily entries, actions and exports work. Saved plans and settings belong only to the current browser session and can be lost after refresh, sign-out or restart. Download reports before leaving. Separate users do not share session records.
+No secrets or database are required for session-only mode. Leave `RAPID_DATABASE_URL` unset and launch `app.py`. Demo logins are Admin `admin` / `admin2026` and Planner `planner` / `user2026`; optional login secrets can replace these. Planning, daily entries, actions and exports work. Saved plans and settings belong only to the current browser session and can be lost after refresh, sign-out or restart. Download reports before leaving. Separate users do not share session records.
 
 ## Main capabilities
 

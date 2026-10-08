@@ -1,6 +1,7 @@
 """Recorded daily progress and corrective actions, separate from the planner.
 
-Targets are explicit supervisor inputs. Actual output is read only from the
+Targets are suggested by the day-start plan or overridden by a supervisor.
+Accepted targets remain fixed for their planning date. Actual output is read from the
 existing order inputs; downtime and rework are contextual records and never
 change completed quantities or the forecast. No inference is presented as a
 recorded factory cause.
@@ -146,6 +147,41 @@ def daily_progress(orders, notes, planning_date):
     return frame
 
 
+def planned_daily_notes(orders, notes, planning_date, daily):
+    """Fill missing targets from a day-start schedule, without accepting them.
+
+    The caller calculates this schedule with today's actual output set to zero,
+    and persists these notes only when the planner saves. Existing commitments
+    (including zero and manual overrides) never change on a forecast rerun.
+    """
+    day = str(_today(planning_date))
+    output = {}
+    if not daily.empty:
+        today = daily[pd.to_datetime(daily["production_date"]).dt.date == _today(planning_date)]
+        output = today.groupby("order")["produced"].sum().to_dict()
+    out = deepcopy(notes)
+    index = {(str(n["planning_date"]), str(n["order"])): i for i, n in enumerate(out)}
+    for order_id, order in _orders_by_id(orders).items():
+        key = (day, order_id)
+        existing = out[index[key]] if key in index else None
+        if existing is not None and pd.notna(existing.get("daily_target")):
+            continue
+        balance = max(0, int(order["Original Quantity"]) - int(order["Completed Before Today"]))
+        target = min(balance, max(0, math.floor(float(output.get(order_id, 0)) + 1e-9)))
+        note = dict(existing or {})
+        note.update(planning_date=day, order=order_id, daily_target=target,
+                    target_source="RAPID plan")
+        note.setdefault("process", _text(order.get("Current Process", "")))
+        note.setdefault("rework_quantity", 0)
+        note.setdefault("downtime_minutes", 0)
+        note.setdefault("recorded_reason", "")
+        if existing is None:
+            out.append(note)
+        else:
+            out[index[key]] = note
+    return out
+
+
 def new_action(order, process, description, owner, due_date, follow_up_date,
                recorded_reason="", actor="", now=None, action_id=None):
     timestamp = now or datetime.now(timezone.utc).isoformat()
@@ -212,7 +248,7 @@ def action_summary(actions, as_of):
     }
 
 
-def render_production_management(state, read_only=False, key_suffix=""):
+def render_production_management(state, read_only=False, key_suffix="", suggested_notes=None):
     """Render single-column controls; caller saves state with its plan transaction.
 
     key_suffix should change when the caller reloads saved data or starts a day.
@@ -220,7 +256,7 @@ def render_production_management(state, read_only=False, key_suffix=""):
     """
     import streamlit as st
 
-    notes = state.get("production_notes", [])
+    notes = state.get("production_notes", []) if suggested_notes is None else suggested_notes
     actions = state.get("actions", [])
     orders = state["orders"]
     planning_date = state["planning_date"]
@@ -228,7 +264,7 @@ def render_production_management(state, read_only=False, key_suffix=""):
     changed = False
     suffix = f"{key_suffix}_{planning_date}"
     st.subheader("Daily production progress")
-    st.caption("Set a daily target agreed at the start of the day. Good output comes from Production Today in the order inputs. Targets do not alter RAPID's capacity or delivery calculations.")
+    st.caption("RAPID suggests daily targets from the plan. You may override a target below. Good output comes from today's actual output entry. Targets stay fixed after saving and do not change capacity calculations.")
     try:
         progress = daily_progress(orders, notes, planning_date)
     except ValueError as exc:
@@ -243,8 +279,8 @@ def render_production_management(state, read_only=False, key_suffix=""):
             st.dataframe(progress[["Order", "Process", "Daily Target", "Good Output Today", "Target Remaining", "Target Reached (%)", "Progress", "Recorded Reason"]], use_container_width=True, hide_index=True)
             st.caption("Target remaining is a day-total comparison. It does not imply a delay before the shift ends. Recorded reasons are supervisor observations, not independently verified root causes.")
         if not read_only:
-            with st.expander("Record targets, downtime and rework", expanded=not targeted.any()):
-                st.caption("Enter good output in the existing order inputs. Rework here is context only: it does not add to or reduce completed output. Record order-level output once; do not add quantities across process stages.")
+            with st.expander("Adjust targets or record a shortfall reason", expanded=False):
+                st.caption("Enter good output in Record actual output above. Rework here is context only: it does not change completed output. Count each order's good units once, even when it passes through several processes.")
                 with st.form(f"production_notes_form_{suffix}"):
                     entries = st.data_editor(
                         daily_entry_frame(orders, notes, planning_date),
@@ -252,7 +288,7 @@ def render_production_management(state, read_only=False, key_suffix=""):
                         hide_index=True, num_rows="fixed",
                         disabled=["Order", "Process", "Good Output Today"],
                         column_config={
-                            "Daily Target": st.column_config.NumberColumn(min_value=0, step=1, help="Explicit daily target, fixed independently of a revised forecast. Leave blank if not agreed."),
+                            "Daily Target": st.column_config.NumberColumn(min_value=0, step=1, help="Optional supervisor override. A saved target stays fixed when actual output or the forecast changes."),
                             "Rework Quantity": st.column_config.NumberColumn(min_value=0, step=1),
                             "Downtime Minutes": st.column_config.NumberColumn(min_value=0, step=1, help="Downtime associated with this order. Overlapping machine downtime is not a factory total."),
                             "Recorded Reason": st.column_config.TextColumn(help="Record the observed issue and evidence. Leave blank when the cause is unknown."),
@@ -264,7 +300,7 @@ def render_production_management(state, read_only=False, key_suffix=""):
                         updated = update_daily_notes(notes, entries, orders, planning_date, actor)
                         changed = updated != notes
                         state["production_notes"] = updated
-                        st.success("Production entries applied to this draft. Save the plan to share them and keep the daily record.")
+                        st.success("Production entries applied to this draft. Use Save today's plan to record them.")
                     except ValueError as exc:
                         st.error(str(exc))
 
