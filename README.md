@@ -2,11 +2,11 @@
 
 ### Daily planner workflow
 
-1. In **Update today**, confirm the planning date and workers present.
-2. In **Record actual output**, select an order and enter its total good units completed today. Actual workers assigned are optional. Use **Order setup & constraints** only to add or change order details, materials, or machine availability.
-3. Review **Today's plan & progress**. RAPID proposes each day's target from its day-start production schedule, recommends workers, and calculates target left and target reached. A zero target means no output is scheduled for that order on the selected date. The target is rounded down to whole units and cannot exceed the order balance at the start of the day.
-4. Use **Save today's plan** to accept the proposed targets and record the plan. Accepted targets stay fixed if actual output or later forecasts change. If necessary, adjust a target or record a shortfall reason in the follow-up section. Review **Actions to take** and assign an owner for corrective action.
-5. Open **Detailed analysis** for delivery risk, process allocation, machines, materials, change history, and the rolling workforce schedule. Reports and Admin Settings remain in the sidebar.
+1. In the **Daily workspace** tab, **Enter today's facts**: select the planning date and confirm workers present. The sample workspace starts on 1 Sep 2026, so select the real production date for live use. Use **Order setup & constraints** only when order details, materials, or machine availability change.
+2. Under **Record completed output**, select an order and enter its total good units completed today. Actual workers assigned are optional. This value is actual production, not the daily target.
+3. **Review today's plan**. RAPID proposes each order's daily target from its day-start production schedule, recommends workers, and calculates target left and target reached. A zero target means no output is scheduled for that order on the selected date. The target is rounded down to whole units and cannot exceed the order balance at the start of the day. Use **Save today's plan** after reviewing the table to accept the targets and record the plan.
+4. **Check delivery outlook**, then **Act on exceptions**. Add a reason or assign an owner and follow-up only when an issue needs action. Accepted targets stay fixed if actual output or later forecasts change.
+5. Open the **Detailed analysis** tab for delivery risk, process allocation, machines, materials, change history, scenarios, and the rolling workforce schedule. Reports and Admin Settings remain in the sidebar.
 
 Actual output reduces the remaining order quantity. A daily target is a tracking commitment; it does not directly change the planner's capacity or delivery calculation.
 

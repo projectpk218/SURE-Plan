@@ -248,7 +248,7 @@ def action_summary(actions, as_of):
     }
 
 
-def render_production_management(state, read_only=False, key_suffix="", suggested_notes=None):
+def render_production_management(state, read_only=False, key_suffix="", suggested_notes=None, compact=False):
     """Render single-column controls; caller saves state with its plan transaction.
 
     key_suffix should change when the caller reloads saved data or starts a day.
@@ -263,8 +263,9 @@ def render_production_management(state, read_only=False, key_suffix="", suggeste
     actor = state.get("username", "Planner")
     changed = False
     suffix = f"{key_suffix}_{planning_date}"
-    st.subheader("Daily production progress")
-    st.caption("RAPID suggests daily targets from the plan. You may override a target below. Good output comes from today's actual output entry. Targets stay fixed after saving and do not change capacity calculations.")
+    if not compact:
+        st.subheader("Daily production progress")
+        st.caption("RAPID suggests daily targets from the plan. You may override a target below. Good output comes from today's actual output entry. Targets stay fixed after saving and do not change capacity calculations.")
     try:
         progress = daily_progress(orders, notes, planning_date)
     except ValueError as exc:
@@ -273,11 +274,12 @@ def render_production_management(state, read_only=False, key_suffix="", suggeste
     if progress.empty:
         st.info("Add an order in Today's Inputs to begin recording daily progress.")
     else:
-        with st.container(border=True):
-            targeted = progress["Daily Target"].notna()
-            st.markdown(f"**{int(targeted.sum())} of {len(progress)} orders have a daily target** · {int(progress['Good Output Today'].sum()):,} good order units recorded today")
-            st.dataframe(progress[["Order", "Process", "Daily Target", "Good Output Today", "Target Remaining", "Target Reached (%)", "Progress", "Recorded Reason"]], use_container_width=True, hide_index=True)
-            st.caption("Target remaining is a day-total comparison. It does not imply a delay before the shift ends. Recorded reasons are supervisor observations, not independently verified root causes.")
+        if not compact:
+            with st.container(border=True):
+                targeted = progress["Daily Target"].notna()
+                st.markdown(f"**{int(targeted.sum())} of {len(progress)} orders have a daily target** · {int(progress['Good Output Today'].sum()):,} good order units recorded today")
+                st.dataframe(progress[["Order", "Process", "Daily Target", "Good Output Today", "Target Remaining", "Target Reached (%)", "Progress", "Recorded Reason"]], use_container_width=True, hide_index=True)
+                st.caption("Target remaining is a day-total comparison. It does not imply a delay before the shift ends. Recorded reasons are supervisor observations, not independently verified root causes.")
         if not read_only:
             with st.expander("Adjust targets or record a shortfall reason", expanded=False):
                 st.caption("Enter good output in Record actual output above. Rework here is context only: it does not change completed output. Count each order's good units once, even when it passes through several processes.")
@@ -304,10 +306,13 @@ def render_production_management(state, read_only=False, key_suffix="", suggeste
                     except ValueError as exc:
                         st.error(str(exc))
 
-    st.subheader("Corrective actions")
+    if compact:
+        st.markdown("**Assigned corrective actions**")
+    else:
+        st.subheader("Corrective actions")
     counts = action_summary(actions, planning_date)
     st.markdown(f"**{counts['open']} open** · {counts['overdue']} overdue · {counts['follow_up_due']} follow-ups due · {counts['completed']} completed")
-    st.caption(f"Due status is relative to the planning date ({planning_date}). Record the owner and follow-up, then test any capacity change in Recovery Planning before applying it.")
+    st.caption(f"Due status is relative to the planning date ({planning_date}). Record an owner and follow-up, then test capacity changes in Detailed analysis before applying them.")
     if actions:
         if read_only:
             st.dataframe(action_frame(actions).drop(columns="Action ID"), use_container_width=True, hide_index=True)
@@ -332,13 +337,13 @@ def render_production_management(state, read_only=False, key_suffix="", suggeste
                     updated = update_actions(actions, action_entries, actor)
                     changed = changed or updated != actions
                     state["actions"] = updated
-                    st.success("Action updates applied to this draft. Save the plan to share them.")
+                    st.success("Action updates applied to this draft. Save today's plan to record them.")
                 except ValueError as exc:
                     st.error(str(exc))
     else:
         st.info("No corrective actions recorded. Add an action when an order or factory constraint needs an owner.")
     if not read_only:
-        with st.expander("Add a corrective action", expanded=not actions):
+        with st.expander("Add a corrective action", expanded=not actions and not compact):
             order_map = _orders_by_id(orders)
             with st.form(f"new_action_form_{suffix}", clear_on_submit=True):
                 selected_order = st.selectbox("Action for", ["Factory-wide"] + list(order_map), key=f"new_action_order_{suffix}")
@@ -354,7 +359,7 @@ def render_production_management(state, read_only=False, key_suffix="", suggeste
                     action = new_action(selected_order, process, description, owner, due, follow_up, reason, actor)
                     state["actions"] = list(state.get("actions", [])) + [action]
                     changed = True
-                    st.success("Action added to this draft. Save the plan to share it with the team.")
+                    st.success("Action added to this draft. Save today's plan to record it.")
                 except ValueError as exc:
                     st.error(str(exc))
     return changed

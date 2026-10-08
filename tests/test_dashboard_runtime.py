@@ -37,6 +37,14 @@ class DashboardRuntimeTests(unittest.TestCase):
         next(b for b in app.button if label in b.label).click().run()
         self.assertEqual(len(app.exception), 0, [e.message for e in app.exception])
 
+    def test_daily_workspace_has_one_progress_view_and_separate_analysis(self):
+        app = self.login()
+        tab_labels = [tab.label for tab in app.tabs]
+        self.assertIn("Daily workspace", tab_labels)
+        self.assertIn("Detailed analysis", tab_labels)
+        self.assertEqual(sum("Target Remaining" in table.value.columns for table in app.dataframe), 1)
+        self.assertEqual(sum("Recommended workers" in table.value.columns for table in app.dataframe), 1)
+
     def test_replanning_attendance_and_all_change_indicators(self):
         app = self.login()
         self.click(app, "Save today's plan")
