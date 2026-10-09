@@ -4,7 +4,6 @@ import copy
 import math
 import os
 import json
-import textwrap
 import pandas as pd
 import streamlit as st
 from sklearn.tree import DecisionTreeClassifier, plot_tree
@@ -15,7 +14,8 @@ from rapid_storage import RapidStore, StorageConflict, StorageConfigurationError
 from rapid_workspace import Workspace
 from rapid_session import SessionStore
 from production_management import render_production_management, daily_progress, action_frame, action_summary, planned_daily_notes
-from rapid_views import allocation_view, confirm_staffing, delivery_view, overview_chart_data
+from rapid_views import allocation_view, confirm_staffing, delivery_view
+from rapid_order_overview import render_order_overview
 
 from planner_core import (
     business_days_between,
@@ -1558,61 +1558,7 @@ if page == "Overview":
         st.write(f"For **{plan_date:%d %b %Y}**, RAPID recommends **{assigned_workers} workers** across **{len(allocation)} active orders**, with approximately **{forecast_units:,} whole units** of planned output.")
         st.caption("Expected output is a full working-day model estimate using remaining order balances. It is not recorded production or a prediction of the hours left in today's shift.")
         st.button("Open worker plan →", on_click=go_to_page, args=("Allocation",), use_container_width=True)
-    output_chart, process_chart = overview_chart_data(progress, allocation)
-    ui_section("Production at a glance", "◫", "Two views of today's plan: the output target against recorded good units, and the workers recommended for each active production process.")
-    with st.container(border=True):
-        st.markdown("**Daily target vs actual good output**")
-        if output_chart.empty:
-            st.info("No target or good output is recorded for an active order yet. Save a plan after setting up orders to see output progress here.")
-        else:
-            fig, ax = plt.subplots(figsize=(9, max(2.6, len(output_chart) * .55 + 1.2)))
-            fig.patch.set_facecolor("#fffefb")
-            ax.set_facecolor("#fffefb")
-            y = list(range(len(output_chart)))
-            targets = output_chart["Daily Target"].tolist()
-            actuals = output_chart["Good Output Today"].tolist()
-            ax.barh([n - .18 for n in y], targets, height=.34, color="#087e8b", label="Daily target")
-            ax.barh([n + .18 for n in y], actuals, height=.34, color="#d8bb8b", label="Good units recorded")
-            ax.set_yticks(y, [str(order) for order in output_chart["Order"]])
-            ax.invert_yaxis()
-            ax.set_xlim(0, max(1, max(targets + actuals) * 1.22))
-            ax.set_xlabel("Good units", color="#294c58")
-            ax.grid(axis="x", color="#e8e3d9", linewidth=.8)
-            ax.set_axisbelow(True)
-            ax.spines[["top", "right", "left"]].set_visible(False)
-            ax.tick_params(axis="both", colors="#294c58", length=0)
-            for n, (target, actual) in enumerate(zip(targets, actuals)):
-                ax.text(target + 2, n - .18, f"{target:,}", va="center", fontsize=9, color="#103c4a")
-                ax.text(actual + 2, n + .18, f"{actual:,}", va="center", fontsize=9, color="#103c4a")
-            ax.legend(frameon=False, loc="lower right", ncol=2, labelcolor="#294c58")
-            fig.tight_layout()
-            st.pyplot(fig, use_container_width=True)
-            plt.close(fig)
-            st.caption("Daily targets are suggested by RAPID and fixed when saved. Sand bars show only good units entered in Production progress. Orders with no target and no output are omitted.")
-    with st.container(border=True):
-        st.markdown(f"**Recommended workers by production process · {plan_date:%d %b %Y}**")
-        if process_chart.empty:
-            st.info("No workers are recommended for an active process on this plan date. Check attendance, materials and machine availability in Setup inputs.")
-        else:
-            fig, ax = plt.subplots(figsize=(9, max(2.5, len(process_chart) * .53 + 1.1)))
-            fig.patch.set_facecolor("#fffefb")
-            ax.set_facecolor("#fffefb")
-            workers = process_chart["Workers"].astype(int).tolist()
-            labels = [textwrap.fill(str(process), width=26) for process in process_chart["Process"]]
-            bars = ax.barh(labels, workers, color="#087e8b", height=.62)
-            ax.invert_yaxis()
-            ax.set_xlim(0, max(1, max(workers) * 1.2))
-            ax.set_xlabel("Recommended workers", color="#294c58")
-            ax.grid(axis="x", color="#e8e3d9", linewidth=.8)
-            ax.set_axisbelow(True)
-            ax.spines[["top", "right", "left"]].set_visible(False)
-            ax.tick_params(axis="both", colors="#294c58", length=0)
-            for bar, count in zip(bars, workers):
-                ax.text(bar.get_width() + .5, bar.get_y() + bar.get_height()/2, str(count), va="center", fontsize=9, color="#103c4a")
-            fig.tight_layout()
-            st.pyplot(fig, use_container_width=True)
-            plt.close(fig)
-            st.caption("Workers are summed by the current process of each order. This is a recommendation, not the workers actually assigned. Processes with zero recommended workers are omitted.")
+    render_order_overview(st.session_state.orders, progress, allocation, delivery, st.session_state.planning_date)
     ui_section("Delivery outlook", "◷", "The dates and delay below come from the same rolling plan as the summary above.")
     st.dataframe(delivery, hide_index=True, use_container_width=True)
 

@@ -113,6 +113,18 @@ a { text-underline-offset: 3px; }
 }
 [data-testid="stForm"] { background: var(--panel); border-color: var(--line); border-radius: 14px; }
 .login-spacer { height: min(9vh, 88px); }
+.order-visual { display:flex; align-items:center; justify-content:center; gap:clamp(28px,6vw,90px); flex-wrap:wrap; padding:30px 12px; }
+.order-ring { width:280px; height:280px; border-radius:50%; display:grid; place-items:center; flex-shrink:0; box-shadow:0 8px 28px rgba(16,60,74,.07); }
+.order-ring-centre { width:206px; height:206px; border-radius:50%; background:var(--panel); display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.order-ring-centre strong { color:var(--deep); font-size:43px; line-height:1.2; font-variant-numeric:tabular-nums; }
+.order-ring-centre span { color:var(--muted); font-size:11px; letter-spacing:.12em; margin:5px 0 12px; }
+.order-ring-centre small { color:var(--muted); font-size:13px; }
+.order-legend { min-width:230px; }
+.order-legend-title { color:var(--muted); font-size:11px; font-weight:650; letter-spacing:.1em; margin-bottom:20px; }
+.order-legend-row { display:flex; gap:12px; align-items:flex-start; margin:18px 0; color:var(--text); font-size:14px; }
+.order-dot { width:12px; height:12px; border-radius:50%; flex:0 0 12px; margin-top:5px; }
+.order-legend-row strong { display:block; color:var(--deep); font-size:22px; font-variant-numeric:tabular-nums; }
+.order-legend-row small { color:var(--muted); font-size:13px; font-weight:400; }
 .st-key-rapid_login {
     padding: 30px 32px 26px;
     border: 1px solid var(--line) !important;
