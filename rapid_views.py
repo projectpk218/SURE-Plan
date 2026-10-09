@@ -24,6 +24,18 @@ def allocation_view(orders, daily):
     } for _, r in first.iterrows()], columns=columns)
 
 
+def overview_chart_data(progress, allocation):
+    """Keep daily targets/actuals separate from recommended process staffing."""
+    output = progress.loc[progress["Daily Target"].notna(),
+        ["Order", "Daily Target", "Good Output Today"]].copy()
+    for column in ("Daily Target", "Good Output Today"):
+        output[column] = pd.to_numeric(output[column], errors="raise").astype(int)
+    output = output.loc[(output["Daily Target"] > 0) | (output["Good Output Today"] > 0)]
+    staffing = allocation.groupby("Process", as_index=False, sort=False)["Workers"].sum()
+    staffing = staffing.loc[staffing["Workers"] > 0].sort_values("Workers", ascending=False)
+    return output, staffing
+
+
 def confirm_staffing(orders, allocation, attendance, planning_date):
     """Record planner-confirmed assignments, without changing output or targets."""
     validate_order_ids(orders["Order"])

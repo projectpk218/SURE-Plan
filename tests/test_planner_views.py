@@ -1,7 +1,7 @@
 import unittest
 from datetime import date
 import pandas as pd
-from rapid_views import allocation_view, confirm_staffing, delivery_view
+from rapid_views import allocation_view, confirm_staffing, delivery_view, overview_chart_data
 
 
 class PlannerViewTests(unittest.TestCase):
@@ -53,3 +53,21 @@ class PlannerViewTests(unittest.TestCase):
         row = delivery_view(self.orders, pd.DataFrame(), self.day).iloc[0]
         self.assertEqual(row["Delivery status"], "Quantity complete")
         self.assertEqual(row["Forecast completion"], "Completion date not recorded")
+
+    def test_overview_charts_keep_recorded_output_and_process_staffing_distinct(self):
+        progress = pd.DataFrame([
+            {"Order": "A", "Daily Target": 20, "Good Output Today": 5},
+            {"Order": "B", "Daily Target": 15, "Good Output Today": 0},
+            {"Order": "C", "Daily Target": None, "Good Output Today": 4},
+            {"Order": "D", "Daily Target": 0, "Good Output Today": 0},
+        ])
+        allocation = pd.DataFrame([
+            {"Process": "Cutting", "Workers": 3},
+            {"Process": "Cutting", "Workers": 2},
+            {"Process": "Sewing", "Workers": 1},
+            {"Process": "Skiving", "Workers": 0},
+        ])
+        output, staffing = overview_chart_data(progress, allocation)
+        self.assertEqual(output["Order"].tolist(), ["A", "B"])
+        self.assertEqual(output["Good Output Today"].tolist(), [5, 0])
+        self.assertEqual(dict(zip(staffing["Process"], staffing["Workers"])), {"Cutting": 5, "Sewing": 1})
