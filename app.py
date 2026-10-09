@@ -14,6 +14,7 @@ from rapid_storage import RapidStore, StorageConflict, StorageConfigurationError
 from rapid_workspace import Workspace
 from rapid_session import SessionStore
 from production_management import render_production_management, daily_progress, action_frame, action_summary, planned_daily_notes
+from rapid_views import allocation_view, confirm_staffing, delivery_view
 
 from planner_core import (
     business_days_between,
@@ -74,7 +75,7 @@ st.set_page_config(
     page_title="RAPID | Production Decision Dashboard",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
 )
 
 # -----------------------------------------------------------------------------
@@ -113,38 +114,43 @@ def logout():
 
 
 def login_page():
-    st.markdown("<div style='height:8vh'></div>", unsafe_allow_html=True)
-    _, centre, _ = st.columns([1, 1.05, 1])
+    st.markdown("<div class='login-spacer'></div>", unsafe_allow_html=True)
+    _, centre, _ = st.columns([1, 1.4, 1], gap="large")
     with centre:
-        st.markdown(
-            """
-            <div style="background:#FFFEFB;border:1px solid #DFD9CC;border-radius:18px;padding:28px 30px;box-shadow:0 12px 35px rgba(16,60,74,.08)">
-              <div style="font-size:30px;font-weight:850;color:#103C4A">⬢ RAPID</div>
-              <div style="color:#61747A;margin-top:5px">Production Decision Dashboard</div>
-              <div style="font-size:12px;color:#61747A;margin-top:6px">Explainable AI + rolling operations planning</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.write("")
-        with st.form("login_form"):
-            u = st.text_input("Username")
-            p = st.text_input("Password", type="password")
-            submitted = st.form_submit_button("Sign in", type="primary", use_container_width=True)
-        if submitted:
-            if u == get_secret("ADMIN_USERNAME", "admin") and p == get_secret("ADMIN_PASSWORD", "admin2026"):
-                st.session_state.authenticated = True
-                st.session_state.role = "Admin"
-                st.session_state.username = u
-                st.rerun()
-            elif u == get_secret("USER_USERNAME", "planner") and p == get_secret("USER_PASSWORD", "user2026"):
-                st.session_state.authenticated = True
-                st.session_state.role = "Planner"
-                st.session_state.username = u
-                st.rerun()
-            else:
-                st.error("Invalid username or password.")
-        st.caption("Admin controls benchmark assumptions. Planner enters today's actual operating conditions and active orders.")
+        with st.container(border=True, key="rapid_login"):
+            st.markdown(
+                """
+                <div class="login-brand">
+                  <div class="login-mark">R</div>
+                  <div><div class="login-name">RAPID</div>
+                  <div class="login-kicker">Resource Allocation & Production Intelligence for Delivery</div></div>
+                </div>
+                <div class="login-title">Welcome back</div>
+                <div class="login-intro">Sign in to review today's plan, assign workers and track delivery.</div>
+                """,
+                unsafe_allow_html=True,
+            )
+            with st.form("login_form"):
+                u = st.text_input("Username", placeholder="Enter your username", autocomplete="username")
+                p = st.text_input("Password", type="password", placeholder="Enter your password", autocomplete="current-password")
+                submitted = st.form_submit_button("Sign in to RAPID", type="primary", use_container_width=True)
+            if submitted:
+                if u.strip() == get_secret("ADMIN_USERNAME", "admin") and p == get_secret("ADMIN_PASSWORD", "admin2026"):
+                    st.session_state.authenticated = True
+                    st.session_state.role = "Admin"
+                    st.session_state.username = u.strip()
+                    st.rerun()
+                elif u.strip() == get_secret("USER_USERNAME", "planner") and p == get_secret("USER_PASSWORD", "user2026"):
+                    st.session_state.authenticated = True
+                    st.session_state.role = "Planner"
+                    st.session_state.username = u.strip()
+                    st.rerun()
+                else:
+                    st.error("Sign-in failed. Check your username and password, then try again.")
+            st.markdown(
+                "<div class='login-help'>Planner: update orders and confirm daily staffing.<br>Admin: manage planning assumptions and access the full workspace.</div>",
+                unsafe_allow_html=True,
+            )
 
 
 database_url = os.environ.get("RAPID_DATABASE_URL") or get_secret("RAPID_DATABASE_URL", None)
@@ -1034,6 +1040,18 @@ def show_saved_records():
 # -----------------------------------------------------------------------------
 # Sidebar
 # -----------------------------------------------------------------------------
+PAGE_LABELS = {
+    "Overview": "⌂  Overview", "Setup": "1 · Setup inputs",
+    "Allocation": "2 · Worker plan", "Progress": "3 · Production progress",
+    "Decisions": "4 · Delivery & actions", "Analysis": "▥  Detailed analysis",
+    "Reports": "▤  Reports", "Admin Settings": "⚙  Admin Settings",
+}
+
+
+def go_to_page(page_name):
+    st.session_state.rapid_navigation = PAGE_LABELS[page_name]
+
+
 with st.sidebar:
     st.markdown(
         """
@@ -1044,9 +1062,9 @@ with st.sidebar:
         """,
         unsafe_allow_html=True,
     )
-    nav_labels = ["⌂  Dashboard", "▤  Reports"] + (["⚙  Admin Settings"] if role == "Admin" else [])
-    selected = st.radio("Navigation", nav_labels, label_visibility="collapsed")
-    page = "Admin Settings" if "Admin Settings" in selected else ("Reports" if "Reports" in selected else "Dashboard")
+    nav_labels = [label for name, label in PAGE_LABELS.items() if name != "Admin Settings" or role == "Admin"]
+    selected = st.radio("Navigation", nav_labels, key="rapid_navigation", label_visibility="collapsed")
+    page = next(name for name, label in PAGE_LABELS.items() if label == selected)
     st.divider()
     st.markdown("<div class='sidebar-status'><div class='sidebar-status-title'>SYSTEM STATUS</div><div class='status-green'><span class='status-dot'></span>Planning workspace ready</div><div style='font-size:9px;opacity:.65;margin-top:8px'>Draft workspace active</div></div>", unsafe_allow_html=True)
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
@@ -1121,6 +1139,7 @@ if page == "Admin Settings":
                 ],
                 columns=["Reference", "Value", "Unit"],
             )
+            ref_df["Value"] = ref_df["Value"].astype(str)
             st.dataframe(ref_df, use_container_width=True, hide_index=True, height=178)
             st.info("Workforce and capacity are independent references; changing workforce does not automatically rescale capacity.")
 
@@ -1189,7 +1208,7 @@ if page == "Reports":
         st.download_button("Daily Production Progress CSV", progress_export.to_csv(index=False).encode("utf-8"), "RAPID_Production_Progress.csv", "text/csv")
         st.download_button("Corrective Actions CSV", actions_export.to_csv(index=False).encode("utf-8"), "RAPID_Corrective_Actions.csv", "text/csv")
     if results.empty:
-        st.info("Add valid active orders on the Dashboard first.")
+        st.info("Add valid active orders on Setup inputs first.")
         st.stop()
 
     export_results = results.copy()
@@ -1235,14 +1254,54 @@ if page == "Reports":
 # -----------------------------------------------------------------------------
 # Dashboard — single-column management layout
 # -----------------------------------------------------------------------------
-dashboard_header = st.empty()
+# Each sidebar page has one job. Draft values live outside widget state.
 st.session_state.orders = normalize_orders(st.session_state.orders)
 
-daily_tab, analysis_tab = st.tabs(["Daily workspace", "Detailed analysis"])
 
-with daily_tab:
-    st.info("RAPID turns order balances, due dates, attendance, material readiness and machine availability into a daily worker plan and delivery forecast. Record actual output to compare the plan with production, then assign action when a risk appears.")
-    # Daily controls above the full-width management sections.
+def render_order_form():
+    ui_section("Add or update one order", "✎", "Use this form for routine setup. The full order grid remains available below.")
+    ids = st.session_state.orders["Order"].tolist()
+    chosen = st.selectbox("Order to set up", [None] + ids,
+        format_func=lambda value: "Add new order" if value is None else str(value), key=f"setup_order_{widget_epoch}")
+    existing = {} if chosen is None else st.session_state.orders.loc[st.session_state.orders["Order"] == chosen].iloc[0].to_dict()
+    with st.form(f"order_setup_form_{widget_epoch}_{chosen}"):
+        c1, c2 = st.columns(2)
+        order_id = c1.text_input("Order ID", value=str(existing.get("Order", "")), disabled=chosen is not None)
+        quantity = c2.number_input("Total order quantity", min_value=1, value=int(existing.get("Original Quantity", 1000)), step=1)
+        c3, c4 = st.columns(2)
+        before = c3.number_input("Good units completed before this date", min_value=0, value=int(existing.get("Completed Before Today", 0)), step=1)
+        due = c4.date_input("Customer due date", value=pd.Timestamp(existing.get("Due Date", st.session_state.planning_date)).date())
+        options = process_options()
+        process = st.selectbox("Current production process", options, index=options.index(existing.get("Current Process", options[0])))
+        material = st.selectbox("Material readiness", MATERIAL_STATUSES, index=MATERIAL_STATUSES.index(existing.get("Material Status", "Ready")))
+        ready_value = existing.get("Expected Material Ready Date")
+        ready = st.date_input("Expected material-ready date (if waiting)", value=None if pd.isna(ready_value) or ready_value is None else pd.Timestamp(ready_value).date())
+        apply_order = st.form_submit_button("Apply order details", use_container_width=True)
+    if apply_order:
+        order_id = order_id.strip()
+        if not order_id or (chosen is None and order_id in ids):
+            st.error("Enter a unique, non-empty order ID.")
+        elif before + int(existing.get("Actual Production Today", 0)) > quantity:
+            st.error("Completed units before this date plus today's output cannot exceed the total order quantity.")
+        else:
+            row = {**existing, "Order": order_id, "Original Quantity": quantity, "Completed Before Today": before,
+                "Actual Production Today": int(existing.get("Actual Production Today", 0)),
+                "Workers Used Today": int(existing.get("Workers Used Today", 0)), "Due Date": pd.Timestamp(due),
+                "Current Process": process, "Material Status": material, "Expected Material Ready Date": pd.Timestamp(ready) if ready else pd.NaT}
+            rows = st.session_state.orders.to_dict("records")
+            if chosen is None:
+                rows.append(row)
+            else:
+                rows[ids.index(chosen)] = row
+            st.session_state.orders = normalize_orders(pd.DataFrame(rows))
+            st.session_state["_widget_epoch"] = widget_epoch + 1
+            st.session_state["_order_notice"] = True
+            st.rerun()
+    if st.session_state.pop("_order_notice", False):
+        st.success("Order details applied. Review the Worker plan, then save your changes.")
+
+
+def render_setup_inputs():
     with st.container(border=True):
         ui_section("1. Enter today's facts", "◴", "Select the working date and confirm how many workers are present. Update orders, materials or machines only when conditions change.")
         if st.session_state.planning_date == date(2026, 9, 1):
@@ -1269,53 +1328,30 @@ with daily_tab:
                 key=f"workers_present_input_{widget_epoch}",
                 disabled=st.session_state.get("_historical", False),
             )
-        operating_summary = st.empty()
-
     if st.session_state.get("_historical"):
-        with dashboard_header.container():
-            ui_header("Saved production record", "Read-only history. Select the latest date to continue planning.")
-        saved_day = database.daily_record(str(st.session_state.planning_date))
-        st.info("This is a saved historical record. It cannot overwrite current production totals.")
-        st.dataframe(payload_frame(saved_day["inputs"]["orders"]), use_container_width=True, hide_index=True)
-        st.dataframe(payload_frame(saved_day["artifacts"]["results"]), use_container_width=True, hide_index=True)
-        render_production_management(st.session_state, read_only=True, key_suffix=str(widget_epoch))
-        show_saved_records()
-        st.stop()
+        return
+    render_order_form()
+    with st.expander("Update machine availability for a process"):
+        machine = st.session_state.machine_today
+        selected_process = st.selectbox("Machine process to update", machine["Process"].tolist(), key=f"machine_process_{widget_epoch}")
+        machine_row = machine.loc[machine["Process"] == selected_process].iloc[0]
+        with st.form(f"machine_form_{widget_epoch}_{selected_process}"):
+            st.caption(f"{int(machine_row['Total Machines'])} machines installed for this process.")
+            available = st.number_input("Machines available now", min_value=0, max_value=int(machine_row["Total Machines"]), value=int(machine_row["Available Today"]), step=1)
+            issue = st.text_input("Breakdown or maintenance note", value=str(machine_row.get("Breakdown / Issue", "")))
+            apply_machine = st.form_submit_button("Apply machine availability", use_container_width=True)
+        if apply_machine:
+            mask = machine["Process"] == selected_process
+            machine.loc[mask, "Available Today"] = available
+            machine.loc[mask, "Breakdown / Issue"] = issue
+            st.session_state.machine_today = machine
+            st.session_state["_widget_epoch"] = widget_epoch + 1
+            st.rerun()
 
-    # A short daily form keeps actual production separate from order setup.
-    with st.container(border=True):
-        ui_section("Record completed output", "✎", "Enter the good units produced for one order today. RAPID updates the remaining quantity and forecast.")
-        order_ids = st.session_state.orders["Order"].tolist()
-        if order_ids:
-            actual_order = st.selectbox("Order to update", order_ids, key=f"daily_order_{widget_epoch}")
-            actual_row = st.session_state.orders.loc[st.session_state.orders["Order"] == actual_order].iloc[0]
-            with st.form(f"daily_actuals_{widget_epoch}_{actual_order}"):
-                a1, a2 = st.columns(2)
-                output_today = a1.number_input("Good units completed today", min_value=0,
-                    value=int(actual_row["Actual Production Today"]), step=1,
-                    help="Enter the total so far today, not an extra quantity to add. Do not enter a target here.")
-                workers_today = a2.number_input("Workers actually assigned (optional)", min_value=0,
-                    value=int(actual_row["Workers Used Today"]), step=1,
-                    help="Records actual staffing for comparison. It does not override RAPID's recommendation.")
-                st.caption("At the start of the shift, leave completed units at 0. Replace this value with the day's total as work progresses.")
-                apply_actuals = st.form_submit_button("Update actual output", use_container_width=True)
-            if apply_actuals:
-                balance = max(0, int(actual_row["Original Quantity"]) - int(actual_row["Completed Before Today"]))
-                if output_today > balance:
-                    st.error(f"Output cannot exceed the {balance:,} units left at the start of this day.")
-                else:
-                    mask = st.session_state.orders["Order"] == actual_order
-                    st.session_state.orders.loc[mask, "Actual Production Today"] = output_today
-                    st.session_state.orders.loc[mask, "Workers Used Today"] = workers_today
-                    st.session_state["_widget_epoch"] = widget_epoch + 1
-                    st.rerun()
-        else:
-            st.info("Add your first order in Order setup below.")
-
-    with st.expander("Order setup & constraints · quantities, due dates, materials and machines", expanded=False):
+    with st.expander("Full order grid & machine availability", expanded=False):
         order_tab, machine_tab = st.tabs(["Order setup & materials", "Machine availability"])
         with order_tab:
-            st.caption("Add or change orders here. Completed before this date is historical output, excluding today. Use the short form above for routine daily output updates.")
+            st.caption("Bulk editing and order removal. Completed before this date excludes today. Record routine output on Production progress.")
             edited_orders = st.data_editor(
                 st.session_state.orders,
                 num_rows="dynamic",
@@ -1367,290 +1403,436 @@ with daily_tab:
             st.dataframe(preview_machine[["Process", "Total Machines", "Available Today", "Breakdown / Unavailable", "Availability %", "Status", "Breakdown / Issue"]], use_container_width=True, hide_index=True, height=285)
             st.caption("Availability is not the same as true utilization. True utilization requires process run-hours/cycle-time data.")
 
-    with dashboard_header.container():
-        ui_header("RAPID production dashboard", "Enter today's facts → review RAPID's plan → act on delivery risks. Targets and worker recommendations come from the planning model.")
 
-    # Recalculate after any editor changes.
-    bundle = calculate_plan()
-    prepared, pred_df, overtime, results, daily, resource_info, recommendations = bundle
-    machine_table = machine_status_table()
-    amap, bottleneck_factor, bottleneck_process, total_machines, available_machines, overall_machine_pct = machine_availability_map()
 
-    # Day-total targets must not shrink as today's recorded output increases.
-    # Use the existing engine with day-start quantities; forecasts still use actuals.
-    day_start_orders = st.session_state.orders.copy(deep=True)
-    day_start_orders["Actual Production Today"] = 0
-    target_daily = calculate_plan(orders_source=day_start_orders)[4]
-    suggested_notes = planned_daily_notes(st.session_state.orders,
-        st.session_state.get("production_notes", []), st.session_state.planning_date, target_daily)
-    operating_summary.markdown(
-        f"<div class='pill-row'><span class='pill'>Standard workforce: {int(settings['benchmark_workers'])}</span><span class='pill'>Active orders: {len(results)}</span><span class='pill'>Machines available: {available_machines}/{total_machines}</span></div>",
-        unsafe_allow_html=True,
-    )
-
-    progress = daily_progress(st.session_state.orders, suggested_notes, st.session_state.planning_date)
+def render_actual_output():
     with st.container(border=True):
-        ui_section("2. Review today's plan", "↗", "Daily targets and recommended workers are calculated by RAPID. Actual output is what you enter above.")
-        overview = progress[["Order", "Daily Target", "Good Output Today", "Target Remaining", "Target Reached (%)"]].copy()
-        worker_map = dict(zip(results["order"], results["day1_workers"])) if not results.empty else {}
-        status_map = dict(zip(results["order"], results["on_time"])) if not results.empty else {}
-        overview.insert(2, "Recommended workers", overview["Order"].map(worker_map).fillna(0).astype(int))
-        overview["Delivery outlook"] = overview["Order"].map(status_map).map({"YES": "On time", "NO": "At risk", "UNKNOWN": "Not confirmed"}).fillna("No active forecast")
-        overview["Target Reached (%)"] = overview["Target Reached (%)"].apply(
-            lambda value: f"{value:.1f}%" if pd.notna(value) else "—"
-        )
-        st.dataframe(overview, use_container_width=True, hide_index=True,
-            column_config={"Daily Target": st.column_config.NumberColumn("Daily target (units)", format="%.0f"),
-                           "Good Output Today": st.column_config.NumberColumn("Actual output (units)", format="%.0f"),
-                           "Target Remaining": st.column_config.NumberColumn("Target left (units)", format="%.0f"),
-                           "Target Reached (%)": st.column_config.TextColumn("Target reached")})
-        st.caption("Target left = daily target minus good units made today. A target is a daily tracking goal, not the remaining order quantity or a delivery-delay prediction. Targets stay fixed once saved.")
+        ui_section("Record completed output", "✎", "Enter the good units produced for one order today. RAPID updates the remaining quantity and forecast.")
+        order_ids = st.session_state.orders["Order"].tolist()
+        if order_ids:
+            actual_order = st.selectbox("Order to update", order_ids, key=f"daily_order_{widget_epoch}")
+            actual_row = st.session_state.orders.loc[st.session_state.orders["Order"] == actual_order].iloc[0]
+            with st.form(f"daily_actuals_{widget_epoch}_{actual_order}"):
+                a1, a2 = st.columns(2)
+                output_today = a1.number_input("Good units completed today", min_value=0,
+                    value=int(actual_row["Actual Production Today"]), step=1,
+                    help="Enter the total so far today, not an extra quantity to add. Do not enter a target here.")
+                workers_today = a2.number_input("Workers actually assigned (optional)", min_value=0,
+                    value=int(actual_row["Workers Used Today"]), step=1,
+                    help="Records actual staffing for comparison. It does not override RAPID's recommendation.")
+                st.caption("At the start of the shift, leave completed units at 0. Replace this value with the day's total as work progresses.")
+                apply_actuals = st.form_submit_button("Update actual output", use_container_width=True)
+            if apply_actuals:
+                balance = max(0, int(actual_row["Original Quantity"]) - int(actual_row["Completed Before Today"]))
+                if output_today > balance:
+                    st.error(f"Output cannot exceed the {balance:,} units left at the start of this day.")
+                elif workers_today + int(st.session_state.orders.loc[st.session_state.orders["Order"] != actual_order, "Workers Used Today"].sum()) > int(st.session_state.workers_present):
+                    st.error("Actual worker assignments across orders cannot exceed today's attendance. Adjust the other assignments or confirm attendance first.")
+                else:
+                    mask = st.session_state.orders["Order"] == actual_order
+                    st.session_state.orders.loc[mask, "Actual Production Today"] = output_today
+                    st.session_state.orders.loc[mask, "Workers Used Today"] = workers_today
+                    st.session_state["_widget_epoch"] = widget_epoch + 1
+                    st.rerun()
+        else:
+            st.info("Add your first order on Setup inputs.")
 
-    replan_clicked = st.button("Save today's plan", type="primary", use_container_width=True)
-    st.caption("The preview updates from your inputs. Saving accepts new daily targets and keeps existing targets fixed. Records stay in this temporary session; download reports before leaving." if session_only else "The preview updates from your inputs. Saving accepts new daily targets and keeps existing targets fixed in the shared daily record.")
 
-    if replan_clicked:
+
+def save_current_plan():
+    if st.button("Save today's plan", type="primary", use_container_width=True):
         previous_notes = st.session_state.get("production_notes", [])
         try:
             st.session_state.production_notes = suggested_notes
-            snap = current_snapshot(results, prepared, machine_table)
-            workspace.save_plan(snap, {
+            workspace.save_plan(current_snapshot(results, prepared, machine_table), {
                 "results": frame_payload(results), "daily": frame_payload(daily),
                 "predictions": frame_payload(pred_df), "recommendations": frame_payload(recommendations),
                 "overtime": float(overtime), "resource_info": resource_info,
             })
-            st.success("Today's plan and targets saved in this session." if session_only else "Today's plan and targets saved for the team.")
+            st.session_state["_saved_notice"] = True
         except Exception as exc:
             st.session_state.production_notes = previous_notes
             show_storage_error(exc)
-
-    if workspace.operations_changed() or str(st.session_state.planning_date) > st.session_state["_latest_date"]:
-        st.info("Preview only — use Save today's plan to record these changes" + (" in this session." if session_only else " for your team."))
-    else:
-        st.caption(f"Saved plan revision {st.session_state['_ops_revision']} · {st.session_state['_saved_at'][:19].replace('T', ' ')} UTC")
-
-
-    if results.empty:
-        st.info("No active quantity remains. Review today's completed output above or add orders in Order setup.")
-        show_saved_records()
-        st.stop()
-
-    missing_ready = [o["order"] for o in prepared if o["material_status"] in BLOCKED_MATERIAL_STATUSES and pd.isna(o.get("expected_material_ready"))]
-    if missing_ready:
-        st.warning(f"Expected Material Ready Date is missing for blocked order(s): {', '.join(missing_ready)}. They remain outside eligible production allocation until a ready date is entered.")
-
-    # Factory outlook follows the order-level plan.
-    st.markdown("### 3. Check delivery outlook")
-    st.caption("Delivery risk is an ML warning; on-time status and delay come from the rolling schedule. These are forecasts, not guarantees. Open Detailed analysis for the evidence.")
-    # KPI row
-    risk_rank = {"LOW": 1, "MEDIUM": 2, "HIGH": 3}
-    worst_risk = max((str(r).upper() for r in results["risk"]), key=lambda x: risk_rank.get(x, 0))
-    late_count = int((results["on_time"] == "NO").sum())
-    if late_count > 0 and worst_risk == "LOW":
-        worst_risk = "MEDIUM"
-    labour_factor = resource_info.get("labour_availability", 0.0)
-    effective_capacity = resource_info.get("effective_daily_capacity", 0.0)
-    total_delay = int(results["projected_delay_days"].sum())
-    on_time = int((results["on_time"] == "YES").sum())
-    active_orders = len(results)
-    risk_tone = "green" if worst_risk == "LOW" else ("orange" if worst_risk == "MEDIUM" else "red")
-    risk_value_class = "risk-low-text" if worst_risk == "LOW" else ("risk-medium-text" if worst_risk == "MEDIUM" else "risk-high-text")
-
-    k1, k2, k3 = st.columns(3)
-    with k1:
-        ui_kpi("◆", "OVERALL DELIVERY RISK", worst_risk, f"{late_count} order(s) currently projected late", risk_tone, risk_value_class)
-    with k2:
-        ui_kpi("◴", "AVAILABLE CAPACITY TODAY", f"{effective_capacity:.0f}", "uppers/day after labour, bottleneck & overtime", "blue")
-    with k3:
-        ui_kpi("♟", "WORKERS PRESENT", f"{int(st.session_state.workers_present)}", f"{labour_factor:.0%} of {int(settings['benchmark_workers'])} standard workforce", "violet")
-    k4, k5, k6 = st.columns(3)
-    with k4:
-        ui_kpi("⚙", "MACHINES AVAILABLE", f"{available_machines}/{total_machines}", f"{bottleneck_process}: {bottleneck_factor:.0%}", "teal")
-    with k5:
-        ui_kpi("✓", "ORDERS ON TIME", f"{on_time}/{active_orders}", "under the current rolling production plan", "green")
-    with k6:
-        ui_kpi("◫", "PROJECTED DELAY", f"{total_delay} {'day' if total_delay == 1 else 'days'}", "total working days across active orders", "red")
-
-    st.markdown(
-        f"<div class='pill-row'><span class='pill'>Labour availability: {labour_factor:.1%}</span><span class='pill'>Machine availability: {overall_machine_pct:.1%}</span><span class='pill'>Bottleneck factor: {bottleneck_factor:.1%}</span><span class='pill'>Recommended overtime: {overtime:.1%}</span><span class='pill'>Material constraints: {sum(o['material_status'] != 'Ready' for o in prepared)}</span></div>",
-        unsafe_allow_html=True,
-    )
-
-    with st.container(border=True):
-        ui_section("4. Act on exceptions", "★", "RAPID lists the issues that need attention. Assign an owner and follow-up date below when action is required.")
-        decision_df = management_decision_rows(results, prepared, labour_factor, machine_table)
-        act_now = int((decision_df["Priority"] == "🔴 ACT NOW").sum())
-        action_today = int((decision_df["Priority"] == "🟠 ACTION TODAY").sum())
-        if act_now:
-            st.markdown(f"<div class='action-banner action-red'>⚠ ACTION REQUIRED · {act_now} critical management action(s) identified.</div>", unsafe_allow_html=True)
-        elif action_today:
-            st.markdown(f"<div class='action-banner action-amber'>Attention needed today · {action_today} corrective action(s) identified.</div>", unsafe_allow_html=True)
         else:
-            st.markdown("<div class='action-banner action-green'>✓ No immediate corrective action is required under the current plan.</div>", unsafe_allow_html=True)
-        st.dataframe(decision_df[["Priority", "Issue", "Affected", "Recommended Action", "When"]].head(6), use_container_width=True, hide_index=True, height=38 + 35 * min(6, len(decision_df)))
-        with st.expander("Why · Expected Impact · If No Action"):
-            st.dataframe(decision_df, use_container_width=True, hide_index=True)
+            st.rerun()
+    st.caption("Saving fixes today's targets and records the current entries. Download a report before leaving this temporary session." if session_only else "Saving fixes today's targets and records the current entries for the team.")
 
-    st.markdown("### Follow-up records")
-    st.caption("Add a shortfall reason or assign an action only when needed. Record routine production in step 1 above.")
+
+PAGE_COPY = {
+    "Overview": ("Production overview", "Your production position, next steps and delivery outlook in one place."),
+    "Setup": ("1. Set up today's inputs", "Confirm the date, attendance, orders and factory constraints. RAPID uses these facts to create the plan."),
+    "Allocation": ("2. Allocate workers", "See who should work on each order, at which process, and the output the model expects."),
+    "Progress": ("3. Record production progress", "Enter actual good output. Compare it with the daily target and see how much remains."),
+    "Decisions": ("4. Review delivery and take action", "Check completion forecasts, understand the issues, and assign follow-up owners."),
+    "Analysis": ("Detailed analysis", "Inspect model evidence, constraints, the full schedule and recovery scenarios."),
+}
+ui_header(*PAGE_COPY[page])
+steps = ["Setup", "Allocation", "Progress", "Decisions"]
+st.markdown("<div class='workflow-strip'>" + "".join(
+    f"<span class='workflow-step {'active' if page == step else ''}'><span class='workflow-number'>{i}</span>{label}</span>"
+    for i, (step, label) in enumerate(zip(steps, ["Set inputs", "Allocate workers", "Record output", "Take action"]), 1)
+) + "</div>", unsafe_allow_html=True)
+
+if page == "Setup":
+    render_setup_inputs()
+
+if st.session_state.get("_historical"):
+    st.info("Saved historical record — read only. Return to Setup inputs to select the latest production date.")
+    saved_day = database.daily_record(str(st.session_state.planning_date))
+    st.dataframe(payload_frame(saved_day["inputs"]["orders"]), use_container_width=True, hide_index=True)
+    st.dataframe(payload_frame(saved_day["artifacts"]["results"]), use_container_width=True, hide_index=True)
+    render_production_management(st.session_state, read_only=True, key_suffix=str(widget_epoch))
+    show_saved_records()
+    st.stop()
+
+bundle = calculate_plan()
+prepared, pred_df, overtime, results, daily, resource_info, recommendations = bundle
+machine_table = machine_status_table()
+amap, bottleneck_factor, bottleneck_process, total_machines, available_machines, overall_machine_pct = machine_availability_map()
+
+# Day-total targets must not shrink as today's recorded output increases.
+# Use the existing engine with day-start quantities; forecasts still use actuals.
+day_start_orders = st.session_state.orders.copy(deep=True)
+day_start_orders["Actual Production Today"] = 0
+target_daily = calculate_plan(orders_source=day_start_orders)[4]
+suggested_notes = planned_daily_notes(st.session_state.orders,
+    st.session_state.get("production_notes", []), st.session_state.planning_date, target_daily)
+
+progress = daily_progress(st.session_state.orders, suggested_notes, st.session_state.planning_date)
+allocation = allocation_view(st.session_state.orders, daily)
+delivery = delivery_view(st.session_state.orders, results, st.session_state.planning_date)
+labour_factor = resource_info.get("labour_availability", 0.0)
+assigned_workers = int(allocation["Workers"].sum())
+attendance = int(st.session_state.workers_present)
+plan_date = allocation["Plan date"].iloc[0] if not allocation.empty else st.session_state.planning_date
+forecast_units = int(allocation["Expected output"].sum())
+if st.session_state.pop("_saved_notice", False):
+    st.success("Plan, targets and entries saved in this session." if session_only else "Plan, targets and entries saved for the team.")
+if workspace.operations_changed() or str(st.session_state.planning_date) > st.session_state["_latest_date"]:
+    st.warning("Unsaved draft · Review the plan and save your changes before changing the production date.")
+else:
+    st.caption(f"Saved revision {st.session_state['_ops_revision']} · Planning date {st.session_state.planning_date:%d %b %Y}")
+
+if page == "Overview":
+    st.markdown("<div class='context-note'><b>What RAPID does</b><br>RAPID combines order balances, due dates, worker attendance, material readiness and machine availability to recommend worker allocations and estimate delivery. Record actual output during the day, then review the revised forecast.</div>", unsafe_allow_html=True)
+    if not results.empty:
+        risk_rank = {"LOW": 1, "MEDIUM": 2, "HIGH": 3}
+        worst_risk = max((str(r).upper() for r in results["risk"]), key=lambda x: risk_rank.get(x, 0))
+        late_count = int((results["on_time"] == "NO").sum())
+        if late_count > 0 and worst_risk == "LOW":
+            worst_risk = "MEDIUM"
+        labour_factor = resource_info.get("labour_availability", 0.0)
+        effective_capacity = resource_info.get("effective_daily_capacity", 0.0)
+        total_delay = int(results["projected_delay_days"].sum())
+        on_time = int((results["on_time"] == "YES").sum())
+        active_orders = len(results)
+        risk_tone = "green" if worst_risk == "LOW" else ("orange" if worst_risk == "MEDIUM" else "red")
+        risk_value_class = "risk-low-text" if worst_risk == "LOW" else ("risk-medium-text" if worst_risk == "MEDIUM" else "risk-high-text")
+
+        k1, k2, k3 = st.columns(3)
+        with k1:
+            ui_kpi("◆", "OVERALL DELIVERY RISK", worst_risk, f"{late_count} order(s) currently projected late", risk_tone, risk_value_class)
+        with k2:
+            ui_kpi("◴", "AVAILABLE CAPACITY TODAY", f"{effective_capacity:.0f}", "uppers/day after labour, bottleneck & overtime", "blue")
+        with k3:
+            ui_kpi("♟", "WORKERS PRESENT", f"{int(st.session_state.workers_present)}", f"{labour_factor:.0%} of {int(settings['benchmark_workers'])} standard workforce", "violet")
+        k4, k5, k6 = st.columns(3)
+        with k4:
+            ui_kpi("⚙", "MACHINES AVAILABLE", f"{available_machines}/{total_machines}", f"{bottleneck_process}: {bottleneck_factor:.0%}", "teal")
+        with k5:
+            ui_kpi("✓", "ORDERS ON TIME", f"{on_time}/{active_orders}", "under the current rolling production plan", "green")
+        with k6:
+            ui_kpi("◫", "PROJECTED DELAY", f"{total_delay} {'day' if total_delay == 1 else 'days'}", "total working days across active orders", "red")
+
+        st.markdown(
+            f"<div class='pill-row'><span class='pill'>Labour availability: {labour_factor:.1%}</span><span class='pill'>Machine availability: {overall_machine_pct:.1%}</span><span class='pill'>Bottleneck factor: {bottleneck_factor:.1%}</span><span class='pill'>Recommended overtime: {overtime:.1%}</span><span class='pill'>Material constraints: {sum(o['material_status'] != 'Ready' for o in prepared)}</span></div>",
+            unsafe_allow_html=True,
+        )
+
+
+    else:
+        st.success("No outstanding production quantity. Check completed orders in Production progress or add an order in Setup inputs.")
+    with st.container(border=True):
+        ui_section("What the current plan says", "↗")
+        st.write(f"For **{plan_date:%d %b %Y}**, RAPID recommends **{assigned_workers} workers** across **{len(allocation)} active orders**, with approximately **{forecast_units:,} whole units** of planned output.")
+        st.caption("Expected output is a full working-day model estimate using remaining order balances. It is not recorded production or a prediction of the hours left in today's shift.")
+        st.button("Open worker plan →", on_click=go_to_page, args=("Allocation",), use_container_width=True)
+    st.markdown("### Choose your next step")
+    for step, title, description in [
+        ("Setup", "1 · Set inputs", "Add orders and confirm workforce, materials and machines."),
+        ("Allocation", "2 · Review allocation", "Read the worker plan and confirm actual staffing when assigned."),
+        ("Progress", "3 · Update production", "Record good units made and compare with the day's target."),
+        ("Decisions", "4 · Resolve exceptions", "Check due dates and assign actions to protect delivery."),
+    ]:
+        with st.container(border=True):
+            st.markdown(f"**{title}**")
+            st.caption(description)
+            st.button("Open " + title.split(" · ")[1], key="open_"+step, on_click=go_to_page, args=(step,))
+    st.dataframe(delivery, hide_index=True, use_container_width=True)
+
+elif page == "Allocation":
+    if allocation.empty:
+        st.info("No active order needs allocation. Add or check orders on Setup inputs.")
+    else:
+        ui_section(f"Worker plan · {plan_date:%d %b %Y}", "⌘", "Workers and expected output below come from the same calculated schedule.")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Workers present", attendance)
+        c2.metric("Recommended assignments", assigned_workers)
+        c3.metric("Not assigned by this plan", max(0, attendance-assigned_workers))
+        if attendance > int(settings["benchmark_workers"]):
+            st.info("The model caps planned labour at the standard workforce. Extra attendance does not automatically increase modeled capacity.")
+        if plan_date != st.session_state.planning_date:
+            st.info(f"The selected date is not a working day. This plan starts on {plan_date:%A, %d %b %Y}; today's target remains zero.")
+        st.dataframe(allocation.drop(columns=["Plan date", "Order balance"]), hide_index=True, use_container_width=True,
+            column_config={"Workers": st.column_config.NumberColumn("Workers to assign", format="%d"), "Expected output": st.column_config.NumberColumn("Expected units", format="%d")})
+        st.caption("Expected units are rounded down for display. The model uses a full working day and current remaining quantities; it does not model remaining shift hours. This recommendation does not change your saved daily target.")
+        if st.button("Confirm these worker assignments", use_container_width=True, disabled=plan_date != st.session_state.planning_date):
+            try:
+                st.session_state.orders = confirm_staffing(st.session_state.orders, allocation, attendance, st.session_state.planning_date)
+                st.session_state["_widget_epoch"] = widget_epoch + 1
+                st.session_state["_staffing_notice"] = True
+                st.rerun()
+            except ValueError as exc:
+                st.error(str(exc))
+        if st.session_state.pop("_staffing_notice", False):
+            st.success("Worker assignments recorded in your draft. Production output is unchanged. Save today's plan to keep the assignments.")
+        st.caption("Use Confirm only after assigning these workers on the floor. It fills the actual worker entries for every order; you can adjust them on Production progress.")
+        ui_section("Understand one order", "↳", "Choose an order to see the allocation in plain language.")
+        chosen = st.selectbox("Order allocation to explain", allocation["Order"].tolist())
+        row = allocation.loc[allocation["Order"] == chosen].iloc[0]
+        advice = recommendations.loc[recommendations["order"] == chosen].iloc[0]
+        evidence = next(order for order in prepared if order["order"] == chosen)
+        with st.container(border=True):
+            st.subheader(f"Order {chosen}")
+            st.write(f"Assign **{row['Workers']} workers** to **{row['Process']}**. The plan expects approximately **{row['Expected output']:,} units** on **{plan_date:%d %b}** from an outstanding balance of **{row['Order balance']:,} units**.")
+            st.markdown("**Why this order received this recommendation**")
+            if row["Workers"] == 0:
+                if evidence["material_delay_days"] > 0:
+                    st.write("No workers are assigned on this scheduled day because material is not yet ready for production.")
+                elif evidence["machine_availability"] <= 0:
+                    st.write("No workers are assigned because the selected process has no available machine capacity.")
+                elif attendance == 0:
+                    st.write("No workers are assigned because today's attendance is zero.")
+                else:
+                    recipients = allocation.loc[allocation["Workers"] > 0]
+                    st.write("The shared workforce is allocated to the other eligible orders under the current urgency ranking: " + "; ".join(f"{r['Order']}: {r['Workers']} workers" for _, r in recipients.iterrows()) + ". This order is deferred in this day's allocation; it is not marked complete.")
+            else:
+                st.write(f"This order receives {row['Workers']} of the {assigned_workers} recommended worker assignments. Its customer due date is {st.session_state.orders.loc[st.session_state.orders['Order'] == chosen, 'Due Date'].iloc[0]:%d %b %Y} and its current process has {evidence['machine_availability']:.0%} machine availability.")
+            st.write(advice["reason"])
+            st.caption("Allocation balances due-date urgency, material eligibility, usable machine capacity and ML risk within the shared workforce limit. These are recorded inputs and model indicators, not a proven root cause.")
+            st.markdown("**Next action**")
+            st.write(advice["recommended_action"])
+            with st.expander("How the expected output is calculated"):
+                per_worker = float(settings["base_capacity"]) / max(1, int(settings["benchmark_workers"]))
+                st.write(f"Reference output per worker: **{per_worker:.2f} units/day**. Machine factor: **{evidence['machine_availability']:.0%}**. Recommended overtime: **{overtime:.1%}**.")
+                st.write(f"Expected output = {row['Workers']} workers × {per_worker:.2f} units per worker × {evidence['machine_availability']:.2f} machine factor × {1 + overtime:.4f} overtime factor, capped at the remaining order balance and rounded down to whole units for display.")
+        with st.expander("Daily targets versus the latest allocation"):
+            st.write("A daily target tracks the whole day's commitment and stays fixed after saving. The worker plan is recalculated from the current outstanding order quantity. Its expected output can therefore differ from the saved target after actual output or factory conditions change.")
+
+elif page == "Progress":
+    render_actual_output()
+    ui_section("Target versus actual output", "↗", "The target is suggested by RAPID and fixed when saved. Actual output comes only from your entries.")
+    st.dataframe(progress[["Order", "Daily Target", "Good Output Today", "Target Remaining", "Target Reached (%)", "Progress"]], hide_index=True, use_container_width=True,
+        column_config={"Daily Target": st.column_config.NumberColumn("Daily target", format="%.0f"), "Good Output Today": st.column_config.NumberColumn("Good units made", format="%.0f"), "Target Remaining": st.column_config.NumberColumn("Target left", format="%.0f"), "Target Reached (%)": st.column_config.NumberColumn("Target reached (%)", format="%.1f")})
+    st.caption("Target left cannot be negative. A zero target means no output is scheduled on this date; its percentage is not applicable. A shortfall before the shift ends does not itself mean delivery is late.")
+    st.markdown("#### Total order balance")
+    balances = st.session_state.orders[["Order", "Original Quantity", "Completed Before Today", "Actual Production Today"]].copy()
+    balances["Remaining Quantity"] = (balances["Original Quantity"] - balances["Completed Before Today"] - balances["Actual Production Today"]).clip(lower=0)
+    st.dataframe(balances, hide_index=True, use_container_width=True)
+    st.caption("Remaining order quantity = original quantity − completed before this date − good output today. Record shortfall reasons and target overrides on Delivery & actions.")
+
+elif page == "Decisions":
+    ui_section("Delivery result by order", "◷", "Compare the due date with the forecast completion. Unfinished orders never receive an invented completion date.")
+    st.dataframe(delivery, hide_index=True, use_container_width=True)
+    if not results.empty:
+        with st.container(border=True):
+            ui_section("4. Act on exceptions", "★", "RAPID lists the issues that need attention. Assign an owner and follow-up date below when action is required.")
+            decision_df = management_decision_rows(results, prepared, labour_factor, machine_table)
+            act_now = int((decision_df["Priority"] == "🔴 ACT NOW").sum())
+            action_today = int((decision_df["Priority"] == "🟠 ACTION TODAY").sum())
+            if act_now:
+                st.markdown(f"<div class='action-banner action-red'>⚠ ACTION REQUIRED · {act_now} critical management action(s) identified.</div>", unsafe_allow_html=True)
+            elif action_today:
+                st.markdown(f"<div class='action-banner action-amber'>Attention needed today · {action_today} corrective action(s) identified.</div>", unsafe_allow_html=True)
+            else:
+                st.markdown("<div class='action-banner action-green'>✓ No immediate corrective action is required under the current plan.</div>", unsafe_allow_html=True)
+            st.dataframe(decision_df[["Priority", "Issue", "Affected", "Recommended Action", "When"]].head(6), use_container_width=True, hide_index=True, height=38 + 35 * min(6, len(decision_df)))
+            with st.expander("Why · Expected Impact · If No Action"):
+                st.dataframe(decision_df, use_container_width=True, hide_index=True)
+
+
+    ui_section("Follow-up and ownership", "✎", "Record evidence, adjust a target if needed, and assign an owner to each corrective action.")
     if render_production_management(st.session_state, key_suffix=str(widget_epoch), suggested_notes=suggested_notes, compact=True):
         st.rerun()
 
+elif page == "Analysis":
+    if results.empty:
+        st.info("No active quantity remains to forecast. Production progress and Reports remain available.")
+    else:
+        # Risk + allocation
+        st.markdown("### Detailed analysis")
+        st.caption("Use this tab to check why RAPID reached a recommendation, inspect constraints, and test recovery options. Reports and Admin Settings remain in the sidebar.")
+        st.markdown("#### Delivery and worker allocation")
+        with st.expander("Delivery risk · AI/ML Delivery-Risk Assessment"):
+            ui_section("AI/ML Delivery-Risk Assessment", "◈")
+            risk_display = pred_df.copy()
+            st.dataframe(risk_display, use_container_width=True, hide_index=True, height=min(400, 38 + 35 * len(risk_display)))
+            st.caption("LOW = manageable · MEDIUM = warning · HIGH = serious delivery risk. Prototype Model Confidence is not certainty of actual delivery outcome.")
+        with st.expander("Allocation details · Resource Allocation Summary"):
+            ui_section("Resource Allocation Summary", "⌘")
+            alloc = results[["order", "day1_workers", "current_process", "completion_day", "projected_delay_days", "on_time"]].copy()
+            alloc["Projected Completion"] = alloc["completion_day"].apply(lambda x: add_business_days(st.session_state.planning_date, int(x) - 1).strftime("%d %b %Y") if pd.notna(x) else "—")
+            alloc = alloc[["order", "day1_workers", "current_process", "Projected Completion", "projected_delay_days", "on_time"]]
+            alloc.columns = ["Order", "Recommended Workers Today", "Primary Process Today", "Projected Completion", "Projected Delay (Days)", "On Time?"]
+            st.dataframe(alloc, use_container_width=True, hide_index=True, height=min(400, 38 + 35 * len(alloc)))
+            st.markdown("**Process-wise worker allocation**")
+            st.dataframe(build_process_allocation(results), use_container_width=True, hide_index=True)
+            st.caption("Workers are assigned to the planner-selected current production process; the prototype does not falsely allocate the same worker across multiple stages simultaneously.")
 
-with analysis_tab:
-    # Risk + allocation
-    st.markdown("### Detailed analysis")
-    st.caption("Use this tab to check why RAPID reached a recommendation, inspect constraints, and test recovery options. Reports and Admin Settings remain in the sidebar.")
-    st.markdown("#### Delivery and worker allocation")
-    with st.expander("Delivery risk · AI/ML Delivery-Risk Assessment"):
-        ui_section("AI/ML Delivery-Risk Assessment", "◈")
-        risk_display = pred_df.copy()
-        st.dataframe(risk_display, use_container_width=True, hide_index=True, height=min(400, 38 + 35 * len(risk_display)))
-        st.caption("LOW = manageable · MEDIUM = warning · HIGH = serious delivery risk. Prototype Model Confidence is not certainty of actual delivery outcome.")
-    with st.expander("Allocation details · Resource Allocation Summary"):
-        ui_section("Resource Allocation Summary", "⌘")
-        alloc = results[["order", "day1_workers", "current_process", "completion_day", "projected_delay_days", "on_time"]].copy()
-        alloc["Projected Completion"] = alloc["completion_day"].apply(lambda x: add_business_days(st.session_state.planning_date, int(x) - 1).strftime("%d %b %Y") if pd.notna(x) else "—")
-        alloc = alloc[["order", "day1_workers", "current_process", "Projected Completion", "projected_delay_days", "on_time"]]
-        alloc.columns = ["Order", "Recommended Workers Today", "Primary Process Today", "Projected Completion", "Projected Delay (Days)", "On Time?"]
-        st.dataframe(alloc, use_container_width=True, hide_index=True, height=min(400, 38 + 35 * len(alloc)))
-        st.markdown("**Process-wise worker allocation**")
-        st.dataframe(build_process_allocation(results), use_container_width=True, hide_index=True)
-        st.caption("Workers are assigned to the planner-selected current production process; the prototype does not falsely allocate the same worker across multiple stages simultaneously.")
+        with st.expander("Explain an order · evidence and recommended action"):
+            explain_order = st.selectbox("Order to explain", [o["order"] for o in prepared])
+            evidence = next(o for o in prepared if o["order"] == explain_order)
+            outcome = results.loc[results["order"] == explain_order].iloc[0]
+            advice = recommendations.loc[recommendations["order"] == explain_order].iloc[0]
+            st.write(f"Remaining quantity: {evidence['quantity']:,}. Recommended workers today: {int(outcome['day1_workers'])}. Current process: {evidence['current_process']}.")
+            st.write(f"Machine availability: {evidence['machine_availability']:.0%}. Material status: {evidence['material_status']}. Delivery assessment: {advice['status']}.")
+            st.markdown("**Recorded constraints and operational indicators**")
+            st.write(advice["reason"])
+            st.markdown("**Recommended action**")
+            st.write(advice["recommended_action"])
+            st.caption("Allocation uses material readiness, usable process capacity, due-date priority and ML risk. Shared workforce is limited to the configured attendance basis. Test changes in What-if Impact Analysis before committing them.")
+            feature_values = pd.DataFrame([{
+                "quantity": float(evidence["quantity"]), "days_remaining": evidence["days_remaining"],
+                "machine_availability": evidence["machine_availability"], "labour_availability": labour_factor,
+                "material_delay_days": evidence["ml_material_delay_days"], "base_capacity": float(settings["base_capacity"]),
+                "required_daily_output": evidence["required_daily_output"], "capacity_ratio": evidence["capacity_ratio"],
+            }], columns=FEATURES)
+            decision_nodes = MODEL.decision_path(feature_values).indices
+            tree_evidence = []
+            for node in decision_nodes:
+                feature_index = int(MODEL.tree_.feature[node])
+                if feature_index >= 0:
+                    observed = float(feature_values.iloc[0, feature_index])
+                    threshold = float(MODEL.tree_.threshold[node])
+                    tree_evidence.append({"Model input": FEATURES[feature_index], "Observed value": observed,
+                        "Condition followed": "≤" if observed <= threshold else ">", "Tree threshold": threshold})
+            st.markdown("**Actual ML decision path**")
+            st.dataframe(pd.DataFrame(tree_evidence), use_container_width=True, hide_index=True)
+            st.caption("These are the classifier's actual tests for this order. The model uses simulated training scenarios; the decision path explains its prediction, not a proven factory root cause. This is plan guidance, not a generative chatbot.")
 
-    with st.expander("Explain an order · evidence and recommended action"):
-        explain_order = st.selectbox("Order to explain", [o["order"] for o in prepared])
-        evidence = next(o for o in prepared if o["order"] == explain_order)
-        outcome = results.loc[results["order"] == explain_order].iloc[0]
-        advice = recommendations.loc[recommendations["order"] == explain_order].iloc[0]
-        st.write(f"Remaining quantity: {evidence['quantity']:,}. Recommended workers today: {int(outcome['day1_workers'])}. Current process: {evidence['current_process']}.")
-        st.write(f"Machine availability: {evidence['machine_availability']:.0%}. Material status: {evidence['material_status']}. Delivery assessment: {advice['status']}.")
-        st.markdown("**Recorded constraints and operational indicators**")
-        st.write(advice["reason"])
-        st.markdown("**Recommended action**")
-        st.write(advice["recommended_action"])
-        st.caption("Allocation uses material readiness, usable process capacity, due-date priority and ML risk. Shared workforce is limited to the configured attendance basis. Test changes in What-if Impact Analysis before committing them.")
-        feature_values = pd.DataFrame([{
-            "quantity": float(evidence["quantity"]), "days_remaining": evidence["days_remaining"],
-            "machine_availability": evidence["machine_availability"], "labour_availability": labour_factor,
-            "material_delay_days": evidence["ml_material_delay_days"], "base_capacity": float(settings["base_capacity"]),
-            "required_daily_output": evidence["required_daily_output"], "capacity_ratio": evidence["capacity_ratio"],
-        }], columns=FEATURES)
-        decision_nodes = MODEL.decision_path(feature_values).indices
-        tree_evidence = []
-        for node in decision_nodes:
-            feature_index = int(MODEL.tree_.feature[node])
-            if feature_index >= 0:
-                observed = float(feature_values.iloc[0, feature_index])
-                threshold = float(MODEL.tree_.threshold[node])
-                tree_evidence.append({"Model input": FEATURES[feature_index], "Observed value": observed,
-                    "Condition followed": "≤" if observed <= threshold else ">", "Tree threshold": threshold})
-        st.markdown("**Actual ML decision path**")
-        st.dataframe(pd.DataFrame(tree_evidence), use_container_width=True, hide_index=True)
-        st.caption("These are the classifier's actual tests for this order. The model uses simulated training scenarios; the decision path explains its prediction, not a proven factory root cause. This is plan guidance, not a generative chatbot.")
+        # Machine and material visibility
+        st.markdown("#### Factory constraints")
+        with st.expander("Machines · availability and bottlenecks"):
+            ui_section("Machine Availability & Bottleneck View", "⚙", "Process-wise machine visibility makes breakdown location and production bottlenecks explicit.")
+            machine_display = machine_table[["Process", "Total Machines", "Available Today", "Breakdown / Unavailable", "Availability %", "Status"]].copy()
+            machine_display["Availability %"] = machine_display["Availability %"].round(1)
+            st.dataframe(machine_display, use_container_width=True, hide_index=True, height=min(460, 38 + 35 * len(machine_display)))
+            st.caption(f"Current bottleneck: {bottleneck_process} ({bottleneck_factor:.1%} available).")
+        with st.expander("Materials · readiness and constraints"):
+            ui_section("Material Readiness & Constraint Tracker", "▧", "Blocked/held material removes an order from eligible production allocation until the ready condition is restored.")
+            material_df = build_material_tracker(prepared)
+            st.dataframe(material_df, use_container_width=True, hide_index=True, height=min(400, 38 + 35 * len(material_df)))
 
-    # Machine and material visibility
-    st.markdown("#### Factory constraints")
-    with st.expander("Machines · availability and bottlenecks"):
-        ui_section("Machine Availability & Bottleneck View", "⚙", "Process-wise machine visibility makes breakdown location and production bottlenecks explicit.")
-        machine_display = machine_table[["Process", "Total Machines", "Available Today", "Breakdown / Unavailable", "Availability %", "Status"]].copy()
-        machine_display["Availability %"] = machine_display["Availability %"].round(1)
-        st.dataframe(machine_display, use_container_width=True, hide_index=True, height=min(460, 38 + 35 * len(machine_display)))
-        st.caption(f"Current bottleneck: {bottleneck_process} ({bottleneck_factor:.1%} available).")
-    with st.expander("Materials · readiness and constraints"):
-        ui_section("Material Readiness & Constraint Tracker", "▧", "Blocked/held material removes an order from eligible production allocation until the ready condition is restored.")
-        material_df = build_material_tracker(prepared)
-        st.dataframe(material_df, use_container_width=True, hide_index=True, height=min(400, 38 + 35 * len(material_df)))
+        # Daily Change Monitor, rendered as compact cards.
+        st.markdown("#### Changes and recovery scenarios")
+        change_df = change_monitor_df(st.session_state.plan_history)
+        with st.expander("What changed since the previous saved plan?"):
+            ui_section("Daily Change Monitor", "↺", "Previous-plan vs today's condition changes after rolling replans.")
+            if change_df.empty:
+                st.info("Save two planning updates to compare changes. The first save establishes the baseline.")
+            else:
+                st.dataframe(change_df, use_container_width=True, hide_index=True)
 
-    # Daily Change Monitor, rendered as compact cards.
-    st.markdown("#### Changes and recovery scenarios")
-    change_df = change_monitor_df(st.session_state.plan_history)
-    with st.expander("What changed since the previous saved plan?"):
-        ui_section("Daily Change Monitor", "↺", "Previous-plan vs today's condition changes after rolling replans.")
-        if change_df.empty:
-            st.info("Save two planning updates to compare changes. The first save establishes the baseline.")
-        else:
-            st.dataframe(change_df, use_container_width=True, hide_index=True)
+        # Workforce allocation + Management Decision Centre
+        with st.expander("Full schedule · Daily Workforce Allocation by Order"):
+            ui_section("Daily Workforce Allocation by Order", "⌁")
+            workforce_view = daily[["production_date", "order", "current_process", "workers_allocated", "produced", "remaining"]].copy()
+            workforce_view.columns = ["Production Date", "Order", "Current Process", "Planned Workers", "Planned Output", "Remaining Quantity"]
+            st.dataframe(workforce_view, use_container_width=True, hide_index=True, height=360,
+                column_config={"Production Date": st.column_config.DateColumn(format="DD MMM YYYY"),
+                               "Planned Output": st.column_config.NumberColumn(format="%.1f"),
+                               "Remaining Quantity": st.column_config.NumberColumn(format="%.1f")})
+            st.caption("Planned daily allocation by order. Worker counts and production quantities are shown directly for each production date.")
+        # What-if impact analysis
+        with st.expander("Test a change · What-if Impact Analysis"):
+            ui_section("What-if Impact Analysis", "⌁", "Hypothetical simulations only. Scenarios compare possible disruptions against today's Current Operating Plan and do not modify the active plan.")
+            scenario_df, scenario_configs = evaluate_scenarios(bundle, machine_table)
+            scenario_cards = scenario_df.head(6).to_dict("records")
+            for sc in scenario_cards:
+                impact_colour = "#20745B" if "STABLE" in sc["Impact"] else ("#946013" if "WATCH" in sc["Impact"] or "WARNING" in sc["Impact"] else "#AD3E40")
+                st.markdown(
+                    f"<div class='scenario-card'><div class='scenario-name'>{sc['Scenario']}</div><div class='scenario-impact' style='color:{impact_colour}'>{sc['Impact']}</div><div class='scenario-big'>{sc['Orders On Time']}</div><div class='scenario-small'>orders on time · {sc['Projected Delay (Days)']} projected delay day(s)<br>{sc['Comparison']}</div></div>",
+                    unsafe_allow_html=True,
+                )
 
-    # Workforce allocation + Management Decision Centre
-    with st.expander("Full schedule · Daily Workforce Allocation by Order"):
-        ui_section("Daily Workforce Allocation by Order", "⌁")
-        workforce_view = daily[["production_date", "order", "current_process", "workers_allocated", "produced", "remaining"]].copy()
-        workforce_view.columns = ["Production Date", "Order", "Current Process", "Planned Workers", "Planned Output", "Remaining Quantity"]
-        st.dataframe(workforce_view, use_container_width=True, hide_index=True, height=360,
-            column_config={"Production Date": st.column_config.DateColumn(format="DD MMM YYYY"),
-                           "Planned Output": st.column_config.NumberColumn(format="%.1f"),
-                           "Remaining Quantity": st.column_config.NumberColumn(format="%.1f")})
-        st.caption("Planned daily allocation by order. Worker counts and production quantities are shown directly for each production date.")
-    # What-if impact analysis
-    with st.expander("Test a change · What-if Impact Analysis"):
-        ui_section("What-if Impact Analysis", "⌁", "Hypothetical simulations only. Scenarios compare possible disruptions against today's Current Operating Plan and do not modify the active plan.")
-        scenario_df, scenario_configs = evaluate_scenarios(bundle, machine_table)
-        scenario_cards = scenario_df.head(6).to_dict("records")
-        for sc in scenario_cards:
-            impact_colour = "#20745B" if "STABLE" in sc["Impact"] else ("#946013" if "WATCH" in sc["Impact"] or "WARNING" in sc["Impact"] else "#AD3E40")
-            st.markdown(
-                f"<div class='scenario-card'><div class='scenario-name'>{sc['Scenario']}</div><div class='scenario-impact' style='color:{impact_colour}'>{sc['Impact']}</div><div class='scenario-big'>{sc['Orders On Time']}</div><div class='scenario-small'>orders on time · {sc['Projected Delay (Days)']} projected delay day(s)<br>{sc['Comparison']}</div></div>",
-                unsafe_allow_html=True,
-            )
+            scenario_tab, recovery_tab = st.tabs(["Scenario details", "Test a recovery action"])
+            with scenario_tab:
+                st.dataframe(scenario_df, use_container_width=True, hide_index=True)
 
-        scenario_tab, recovery_tab = st.tabs(["Scenario details", "Test a recovery action"])
-        with scenario_tab:
-            st.dataframe(scenario_df, use_container_width=True, hide_index=True)
+            with recovery_tab:
+                non_baseline = [s for s in scenario_df["Scenario"].tolist() if s != "Current Operating Plan"]
+                rc1, rc2 = st.columns(2)
+                with rc1:
+                    selected_scenario = st.selectbox("Scenario to recover", non_baseline)
+                with rc2:
+                    recovery_action = st.selectbox("Recovery action to test", ["Use Maximum Overtime", "Recover 50% of Machine Loss", "Recover 10% of Standard Workforce", "Expedite Material by 2 Working Days"])
+                if st.button("Test Recovery Action", use_container_width=True):
+                    cfg = copy.deepcopy(scenario_configs[selected_scenario])
+                    before_bundle = cfg["bundle"]
+                    workers = int(cfg["workers"])
+                    m_map = dict(cfg["machine_map"])
+                    extra_delay = dict(cfg["extra_delay"])
+                    status_override = dict(cfg["status_override"])
+                    overtime_override = None
 
-        with recovery_tab:
-            non_baseline = [s for s in scenario_df["Scenario"].tolist() if s != "Current Operating Plan"]
-            rc1, rc2 = st.columns(2)
-            with rc1:
-                selected_scenario = st.selectbox("Scenario to recover", non_baseline)
-            with rc2:
-                recovery_action = st.selectbox("Recovery action to test", ["Use Maximum Overtime", "Recover 50% of Machine Loss", "Recover 10% of Standard Workforce", "Expedite Material by 2 Working Days"])
-            if st.button("Test Recovery Action", use_container_width=True):
-                cfg = copy.deepcopy(scenario_configs[selected_scenario])
-                before_bundle = cfg["bundle"]
-                workers = int(cfg["workers"])
-                m_map = dict(cfg["machine_map"])
-                extra_delay = dict(cfg["extra_delay"])
-                status_override = dict(cfg["status_override"])
-                overtime_override = None
+                    if recovery_action == "Use Maximum Overtime":
+                        overtime_override = float(settings["max_overtime"])
+                    elif recovery_action == "Recover 50% of Machine Loss":
+                        current_map, _, _, _, _, _ = machine_availability_map()
+                        for p in m_map:
+                            loss = current_map.get(p, 1.0) - m_map[p]
+                            if loss > 0:
+                                m_map[p] = min(current_map.get(p, 1.0), m_map[p] + loss * 0.50)
+                    elif recovery_action == "Recover 10% of Standard Workforce":
+                        workers = min(int(st.session_state.workers_present), workers + max(1, round(int(settings["benchmark_workers"]) * 0.10)))
+                    elif recovery_action == "Expedite Material by 2 Working Days":
+                        extra_delay = {k: max(0, int(v) - 2) for k, v in extra_delay.items()}
+                        if all(v == 0 for v in extra_delay.values()):
+                            status_override = {}
 
-                if recovery_action == "Use Maximum Overtime":
-                    overtime_override = float(settings["max_overtime"])
-                elif recovery_action == "Recover 50% of Machine Loss":
-                    current_map, _, _, _, _, _ = machine_availability_map()
-                    for p in m_map:
-                        loss = current_map.get(p, 1.0) - m_map[p]
-                        if loss > 0:
-                            m_map[p] = min(current_map.get(p, 1.0), m_map[p] + loss * 0.50)
-                elif recovery_action == "Recover 10% of Standard Workforce":
-                    workers = min(int(st.session_state.workers_present), workers + max(1, round(int(settings["benchmark_workers"]) * 0.10)))
-                elif recovery_action == "Expedite Material by 2 Working Days":
-                    extra_delay = {k: max(0, int(v) - 2) for k, v in extra_delay.items()}
-                    if all(v == 0 for v in extra_delay.values()):
-                        status_override = {}
+                    after_bundle = calculate_plan(workers_override=workers, machine_map_override=m_map, extra_delay_map=extra_delay, status_override_map=status_override, overtime_override=overtime_override)
+                    before_res = before_bundle[3]
+                    after_res = after_bundle[3]
+                    before_on = int((before_res["on_time"] == "YES").sum())
+                    after_on = int((after_res["on_time"] == "YES").sum())
+                    before_delay = int(before_res["projected_delay_days"].sum())
+                    after_delay = int(after_res["projected_delay_days"].sum())
+                    r1, r2, r3, r4 = st.columns(4)
+                    r1.metric("Before · Orders On Time", f"{before_on}/{len(before_res)}")
+                    r2.metric("After · Orders On Time", f"{after_on}/{len(after_res)}", delta=after_on - before_on)
+                    r3.metric("Before · Projected Delay", before_delay)
+                    r4.metric("After · Projected Delay", after_delay, delta=after_delay - before_delay, delta_color="inverse")
+                    st.caption("Recovery-test results are recalculated by the planning engine and remain decision-support estimates, not guaranteed outcomes.")
 
-                after_bundle = calculate_plan(workers_override=workers, machine_map_override=m_map, extra_delay_map=extra_delay, status_override_map=status_override, overtime_override=overtime_override)
-                before_res = before_bundle[3]
-                after_res = after_bundle[3]
-                before_on = int((before_res["on_time"] == "YES").sum())
-                after_on = int((after_res["on_time"] == "YES").sum())
-                before_delay = int(before_res["projected_delay_days"].sum())
-                after_delay = int(after_res["projected_delay_days"].sum())
-                r1, r2, r3, r4 = st.columns(4)
-                r1.metric("Before · Orders On Time", f"{before_on}/{len(before_res)}")
-                r2.metric("After · Orders On Time", f"{after_on}/{len(after_res)}", delta=after_on - before_on)
-                r3.metric("Before · Projected Delay", before_delay)
-                r4.metric("After · Projected Delay", after_delay, delta=after_delay - before_delay, delta_color="inverse")
-                st.caption("Recovery-test results are recalculated by the planning engine and remain decision-support estimates, not guaranteed outcomes.")
+        with st.expander("Management detail · order reasons · process allocation · full rolling schedule"):
+            st.markdown("**Order-level recommendations**")
+            st.dataframe(recommendations, use_container_width=True, hide_index=True)
+            st.markdown("**Process-wise worker allocation today**")
+            st.dataframe(build_process_allocation(results), use_container_width=True, hide_index=True)
+            st.markdown("**Full planned daily allocation**")
+            st.dataframe(daily, use_container_width=True, hide_index=True, height=360)
 
-    with st.expander("Management detail · order reasons · process allocation · full rolling schedule"):
-        st.markdown("**Order-level recommendations**")
-        st.dataframe(recommendations, use_container_width=True, hide_index=True)
-        st.markdown("**Process-wise worker allocation today**")
-        st.dataframe(build_process_allocation(results), use_container_width=True, hide_index=True)
-        st.markdown("**Full planned daily allocation**")
-        st.dataframe(daily, use_container_width=True, hide_index=True, height=360)
 
+
+st.divider()
+save_current_plan()
+if page in steps:
+    position = steps.index(page)
+    back, forward = st.columns(2)
+    if position > 0:
+        back.button("← " + PAGE_LABELS[steps[position-1]].split(" · ")[1], on_click=go_to_page, args=(steps[position-1],), use_container_width=True)
+    if position < len(steps)-1:
+        forward.button("Next: " + PAGE_LABELS[steps[position+1]].split(" · ")[1] + " →", on_click=go_to_page, args=(steps[position+1],), use_container_width=True)
 
 storage_note = ("Saved plans exist only in this temporary session. Download reports before leaving."
                 if session_only else "Saved plans use the configured database.")

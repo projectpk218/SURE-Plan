@@ -31,7 +31,12 @@ class DashboardRuntimeTests(unittest.TestCase):
         app.text_input[1].set_value("admin2026" if role == "admin" else "user2026")
         app.button[0].click().run()
         self.assertEqual(len(app.exception), 0, [e.message for e in app.exception])
+        self.navigate(app, "Setup inputs")
         return app
+
+    def navigate(self, app, page):
+        app.radio[0].set_value(next(v for v in app.radio[0].options if page in v)).run()
+        self.assertEqual(len(app.exception), 0, [e.message for e in app.exception])
 
     def click(self, app, label):
         next(b for b in app.button if label in b.label).click().run()
@@ -39,11 +44,13 @@ class DashboardRuntimeTests(unittest.TestCase):
 
     def test_daily_workspace_has_one_progress_view_and_separate_analysis(self):
         app = self.login()
-        tab_labels = [tab.label for tab in app.tabs]
-        self.assertIn("Daily workspace", tab_labels)
-        self.assertIn("Detailed analysis", tab_labels)
+        self.navigate(app, "Worker plan")
+        self.assertEqual(sum("Expected output" in table.value.columns for table in app.dataframe), 1)
+        self.assertFalse(any("Target Remaining" in table.value.columns for table in app.dataframe))
+        self.navigate(app, "Production progress")
         self.assertEqual(sum("Target Remaining" in table.value.columns for table in app.dataframe), 1)
-        self.assertEqual(sum("Recommended workers" in table.value.columns for table in app.dataframe), 1)
+        self.navigate(app, "Detailed analysis")
+        self.assertTrue(any("ML Delivery Risk" in table.value.columns for table in app.dataframe))
 
     def test_replanning_attendance_and_all_change_indicators(self):
         app = self.login()
@@ -52,11 +59,13 @@ class DashboardRuntimeTests(unittest.TestCase):
         self.click(app, "Save today's plan")
         self.assertEqual(app.session_state.plan_history[-1]["workers_present"], 110)
         self.assertEqual(sum(app.session_state.plan_history[-1]["recommended_workers"].values()), 110)
+        self.navigate(app, "Detailed analysis")
         changes = next(d.value for d in app.dataframe if "Indicator" in d.value.columns)
         self.assertEqual(len(changes), 7)
 
     def test_all_recovery_actions_keep_active_orders_unchanged(self):
         app = self.login()
+        self.navigate(app, "Detailed analysis")
         original = app.session_state.orders.copy(deep=True)
         for action in next(s for s in app.selectbox if s.label == "Recovery action to test").options:
             next(s for s in app.selectbox if s.label == "Recovery action to test").select(action).run()
@@ -104,6 +113,8 @@ class DashboardRuntimeTests(unittest.TestCase):
         self.assertFalse(any("Admin Settings" in v for v in app.radio[0].options))
         next(n for n in app.number_input if n.label == "Workers Present Today").set_value(0).run()
         self.assertEqual(len(app.exception), 0, [e.message for e in app.exception])
+        self.navigate(app, "Worker plan")
+        self.navigate(app, "Delivery & actions")
         app.radio[0].set_value(next(v for v in app.radio[0].options if "Reports" in v)).run()
         self.assertEqual(len(app.exception), 0, [e.message for e in app.exception])
         results = next(d.value for d in app.dataframe if "completion_day" in d.value.columns)

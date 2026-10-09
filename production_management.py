@@ -272,7 +272,7 @@ def render_production_management(state, read_only=False, key_suffix="", suggeste
         st.error(str(exc))
         return False
     if progress.empty:
-        st.info("Add an order in Today's Inputs to begin recording daily progress.")
+        st.info("Add an order on Setup inputs to begin recording daily progress.")
     else:
         if not compact:
             with st.container(border=True):
@@ -282,7 +282,7 @@ def render_production_management(state, read_only=False, key_suffix="", suggeste
                 st.caption("Target remaining is a day-total comparison. It does not imply a delay before the shift ends. Recorded reasons are supervisor observations, not independently verified root causes.")
         if not read_only:
             with st.expander("Adjust targets or record a shortfall reason", expanded=False):
-                st.caption("Enter good output in Record actual output above. Rework here is context only: it does not change completed output. Count each order's good units once, even when it passes through several processes.")
+                st.caption("Enter good output on Production progress. Rework here is context only: it does not change completed output. Count each order's good units once, even when it passes through several processes.")
                 with st.form(f"production_notes_form_{suffix}"):
                     entries = st.data_editor(
                         daily_entry_frame(orders, notes, planning_date),

@@ -112,11 +112,31 @@ a { text-underline-offset: 3px; }
     box-shadow: var(--shadow);
 }
 [data-testid="stForm"] { background: var(--panel); border-color: var(--line); border-radius: 14px; }
+.login-spacer { height: min(9vh, 88px); }
+.st-key-rapid_login {
+    padding: 30px 32px 26px;
+    border: 1px solid var(--line) !important;
+    border-top: 5px solid var(--ocean) !important;
+    border-radius: 18px !important;
+    background: var(--panel);
+    box-shadow: 0 18px 55px rgba(16, 60, 74, .1);
+}
+.st-key-rapid_login [data-testid="stForm"] {
+    padding: 0; border: 0; background: transparent; box-shadow: none;
+}
+.login-brand { display: flex; align-items: center; gap: 13px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+.login-mark { width: 45px; height: 45px; flex: 0 0 45px; display: grid; place-items: center; border-radius: 12px; background: var(--sand-accent); color: var(--deep); font-size: 27px; font-weight: 800; }
+.login-name { color: var(--deep); font-size: 27px; line-height: 1.05; font-weight: 800; letter-spacing: .02em; }
+.login-kicker { color: var(--muted); font-size: 10px; line-height: 1.45; margin-top: 4px; text-transform: uppercase; letter-spacing: .04em; }
+.login-title { color: var(--deep); font-size: 26px; line-height: 1.2; font-weight: 750; margin-top: 25px; }
+.login-intro { color: var(--muted); font-size: 14px; line-height: 1.6; margin: 7px 0 23px; }
+.login-help { color: var(--muted); font-size: 12px; line-height: 1.65; border-top: 1px solid var(--line); margin-top: 18px; padding-top: 15px; }
 .section-title { font-size: 20px; line-height: 1.4; font-weight: 700; color: var(--deep); margin: 5px 0 8px; display: flex; align-items: center; gap: 10px; letter-spacing: -.02em; }
 .section-icon { font-size: 18px; color: var(--ocean); flex-shrink: 0; }
 .section-sub { font-size: 14px; color: var(--muted); line-height: 1.65; margin: 0 0 16px; max-width: 1050px; }
 [data-testid="stWidgetLabel"] p { font-weight: 600; line-height: 1.45; }
 [data-testid="stTextInput"] [data-baseweb="input"],
+[data-testid="stTextInputRootElement"],
 [data-testid="stNumberInput"] [data-baseweb="input"],
 [data-testid="stDateInput"] [data-baseweb="input"],
 [data-testid="stTextArea"] textarea,
@@ -128,6 +148,7 @@ a { text-underline-offset: 3px; }
     color: var(--ink);
 }
 [data-testid="stTextInput"] [data-baseweb="input"]:focus-within,
+[data-testid="stTextInputRootElement"]:focus-within,
 [data-testid="stNumberInput"] [data-baseweb="input"]:focus-within,
 [data-testid="stDateInput"] [data-baseweb="input"]:focus-within,
 [data-testid="stSelectbox"] [data-baseweb="select"]:focus-within > div,
@@ -223,6 +244,12 @@ details[data-testid="stExpander"] summary { color: var(--deep); font-weight: 600
 .workflow-step.active { background: #e7f1f1; border-color: #b6d4d5; color: var(--deep); }
 .workflow-number { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: #e9e3d8; color: var(--deep); font-size: 11px; font-weight: 700; }
 .workflow-step.active .workflow-number { background: var(--ocean); color: white; }
+.workflow-strip { padding: 10px 0 16px; border-bottom: 1px solid var(--line); }
+[data-testid="stMetric"] { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; min-height: 118px; }
+[data-testid="stMetricLabel"] { color: var(--muted); font-size: 13px; }
+[data-testid="stMetricValue"] { color: var(--deep); font-variant-numeric: tabular-nums; }
+[data-testid="stSidebar"] .stRadio label { padding: .48rem .65rem; }
+[data-testid="stSidebar"] .stRadio label p { font-size: 14px; font-weight: 600; }
 .context-note { border-left: 3px solid var(--ocean); padding: 10px 13px; margin: 6px 0 16px; background: #eef5f3; color: #345a65; border-radius: 0 7px 7px 0; font-size: 13px; line-height: 1.6; }
 
 @media (max-width: 1100px) {
@@ -233,6 +260,8 @@ details[data-testid="stExpander"] summary { color: var(--deep); font-weight: 600
 }
 @media (max-width: 640px) {
     .block-container { padding: 4rem 1rem 2rem; }
+    .login-spacer { height: 1vh; }
+    .st-key-rapid_login { padding: 23px 20px 20px; }
     .dashboard-header { margin-bottom: 18px; padding-bottom: 18px; gap: 13px; }
     .dashboard-h1 { font-size: 26px; }
     .dashboard-sub { font-size: 13px; }
