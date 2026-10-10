@@ -60,9 +60,17 @@ class DailyWorkflowTests(unittest.TestCase):
         self.assertEqual(updated[0]["recorded_reason"], "Material arrived late")
         self.assertEqual(updated[0]["downtime_minutes"], 20)
 
-    def test_weekend_does_not_borrow_monday_output(self):
+    def test_date_without_schedule_does_not_borrow_other_date_output(self):
         notes = planned_daily_notes(self.orders, [], date(2026, 10, 10), self.daily)
         self.assertTrue(all(n["daily_target"] == 0 for n in notes))
+
+    def test_saturday_and_sunday_receive_their_own_targets(self):
+        for day in (date(2026, 10, 10), date(2026, 10, 11)):
+            daily = self.daily.iloc[:1].copy()
+            daily["production_date"] = day
+            daily["produced"] = 120
+            notes = planned_daily_notes(self.orders, [], day, daily)
+            self.assertEqual(next(n for n in notes if n["order"] == daily.iloc[0]["order"])["daily_target"], 120)
 
     def test_next_date_gets_new_targets_and_does_not_modify_orders(self):
         before = self.orders.copy(deep=True)

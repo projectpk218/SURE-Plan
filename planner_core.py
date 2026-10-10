@@ -17,39 +17,25 @@ def validate_order_ids(order_ids):
         raise ValueError("Duplicate order IDs: " + ", ".join(sorted(duplicates)) + ". Enter a unique ID for each order.")
 
 
+# Compatibility names retained for callers; every calendar day is a production day.
 def business_day_deadline(start_date, due_date):
-    """Signed due-day index relative to the first scheduled business day (day 1)."""
-    start = pd.offsets.BDay().rollforward(pd.Timestamp(start_date).normalize())
-    due = pd.Timestamp(due_date).normalize()
-    if due < start:
-        return 1 - len(pd.bdate_range(due + pd.Timedelta(days=1), start))
-    return len(pd.bdate_range(start, due))
+    """Signed due-day index on RAPID's Monday–Sunday calendar (start is day 1)."""
+    return (pd.Timestamp(due_date).normalize() - pd.Timestamp(start_date).normalize()).days + 1
 
 
 def business_days_between(start_date, due_date):
-    """Business days from planning date through due date (minimum 1)."""
-    start = pd.Timestamp(start_date).normalize()
-    due = pd.Timestamp(due_date).normalize()
-    if due < start:
-        return 1
-    return max(1, len(pd.bdate_range(start, due)))
+    """Inclusive production days through the due date, with a minimum of one."""
+    return max(1, business_day_deadline(start_date, due_date))
 
 
 def business_days_until_ready(start_date, ready_date):
-    """Business days before material becomes available; 0 means available today."""
-    start = pd.Timestamp(start_date).normalize()
-    ready = pd.Timestamp(ready_date).normalize()
-    if ready <= start:
-        return 0
-    # Count business days [start, ready), so a Friday-ready material is usable Friday.
-    return len(pd.bdate_range(start, ready - pd.Timedelta(days=1)))
+    """Production days before material is ready; the ready date is usable."""
+    return max(0, (pd.Timestamp(ready_date).normalize() - pd.Timestamp(start_date).normalize()).days)
 
 
 def add_business_days(start_date, working_days):
-    d = pd.offsets.BDay().rollforward(pd.Timestamp(start_date).normalize())
-    if working_days <= 0:
-        return d
-    return pd.bdate_range(d, periods=working_days + 1)[-1]
+    """Add production days without skipping Saturday or Sunday."""
+    return pd.Timestamp(start_date).normalize() + pd.Timedelta(days=max(0, int(working_days)))
 
 
 def recommend_overtime(

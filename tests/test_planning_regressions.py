@@ -106,29 +106,29 @@ class PlanningRegressions(unittest.TestCase):
         # Signed scheduling deadline must preserve elapsed lateness, independently of ML's minimum-one-day input.
         deadline = core.business_day_deadline("2026-09-10", "2026-09-01")
         result, _, _ = simulate([order(quantity=10, due=deadline)])
-        self.assertEqual(result.iloc[0].projected_delay_days, 7)
+        self.assertEqual(result.iloc[0].projected_delay_days, 9)
         self.assertEqual(result.iloc[0].on_time, "NO")
         self.assertEqual(core.business_days_between("2026-09-10", "2026-09-01"), 1)
 
     def test_due_today_and_future_deadlines(self):
-        for due, expected in [("2026-09-10", 1), ("2026-09-11", 2), ("2026-09-13", 2)]:
+        for due, expected in [("2026-09-10", 1), ("2026-09-11", 2), ("2026-09-13", 4)]:
             with self.subTest(due=due):
                 self.assertEqual(core.business_day_deadline("2026-09-10", due), expected)
 
-    def test_weekend_schedule_starts_monday(self):
+    def test_weekend_schedule_starts_on_selected_date(self):
         for start in ["2026-09-12", "2026-09-13"]:
             with self.subTest(start=start):
                 dates = [str(core.add_business_days(start, i).date()) for i in range(3)]
-                self.assertEqual(dates, ["2026-09-14", "2026-09-15", "2026-09-16"])
+                self.assertEqual(dates, [str((pd.Timestamp(start) + pd.Timedelta(days=i)).date()) for i in range(3)])
 
     def test_weekday_schedule_and_material_release_stay_aligned(self):
-        self.assertEqual(str(core.add_business_days("2026-09-11", 1).date()), "2026-09-14")
-        self.assertEqual(core.business_days_until_ready("2026-09-12", "2026-09-14"), 0)
+        self.assertEqual(str(core.add_business_days("2026-09-11", 1).date()), "2026-09-12")
+        self.assertEqual(core.business_days_until_ready("2026-09-12", "2026-09-14"), 2)
 
-    def test_weekend_past_deadline_is_late_on_monday(self):
+    def test_sunday_deadline_allows_saturday_production(self):
         deadline = core.business_day_deadline("2026-09-12", "2026-09-13")
         result, _, _ = simulate([order(quantity=10, due=deadline)])
-        self.assertEqual(result.iloc[0].projected_delay_days, 1)
+        self.assertEqual(result.iloc[0].projected_delay_days, 0)
 
     def test_completion_display_and_export_allow_missing_dates(self):
         tree = ast.parse((ROOT / "app.py").read_text(encoding="utf-8"))
@@ -188,7 +188,7 @@ class AppCalculationIntegration(unittest.TestCase):
 
     def test_overdue_deadline_is_used_without_changing_ml_days(self):
         bundle = self.ns["calculate_plan"](orders_source=self.orders)
-        self.assertEqual(bundle[3].iloc[0].projected_delay_days, 7)
+        self.assertEqual(bundle[3].iloc[0].projected_delay_days, 9)
         self.assertEqual(bundle[3].iloc[0].on_time, "NO")
         self.assertEqual(self.features[0]["days_remaining"], 1)
 
@@ -228,7 +228,7 @@ class AppCalculationIntegration(unittest.TestCase):
         self.orders["Due Date"] = pd.Timestamp("2026-09-30")
         daily = self.ns["calculate_plan"](orders_source=self.orders)[4]
         self.assertEqual([str(d) for d in daily.production_date],
-                         ["2026-09-14", "2026-09-15", "2026-09-16"])
+                         ["2026-09-12", "2026-09-13", "2026-09-14"])
 
 
 if __name__ == "__main__":

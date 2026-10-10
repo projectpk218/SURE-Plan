@@ -1304,7 +1304,7 @@ def render_order_form():
 
 def render_setup_inputs():
     with st.container(border=True):
-        ui_section("1. Enter today's facts", "◴", "Select the working date and confirm how many workers are present. Update orders, materials or machines only when conditions change.")
+        ui_section("1. Enter today's facts", "◴", "Production runs Monday–Sunday. Select the planning date and confirm how many workers are present. Update orders, materials or machines only when conditions change.")
         if st.session_state.planning_date == date(2026, 9, 1):
             st.caption("Sample workspace date: 1 Sep 2026. Select the real production date before using RAPID for live planning.")
         c1, c2 = st.columns(2)
@@ -1574,7 +1574,7 @@ elif page == "Allocation":
         if attendance > int(settings["benchmark_workers"]):
             st.info("The model caps planned labour at the standard workforce. Extra attendance does not automatically increase modeled capacity.")
         if plan_date != st.session_state.planning_date:
-            st.info(f"The selected date is not a working day. This plan starts on {plan_date:%A, %d %b %Y}; today's target remains zero.")
+            st.info(f"The available schedule starts on {plan_date:%A, %d %b %Y}; today's target remains zero.")
         st.dataframe(allocation.drop(columns=["Plan date", "Order balance"]), hide_index=True, use_container_width=True,
             column_config={"Workers": st.column_config.NumberColumn("Workers to assign", format="%d"), "Expected output": st.column_config.NumberColumn("Expected units", format="%d")})
         st.caption("Expected units are rounded down for display. The model uses a full working day and current remaining quantities; it does not model remaining shift hours. This recommendation does not change your saved daily target.")
